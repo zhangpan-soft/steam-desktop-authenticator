@@ -31,12 +31,14 @@ let win: BrowserWindow | null
 function createWindow() {
   win = new BrowserWindow({
     icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
-    width: 420,   // 改窄，模仿手机/工具宽度
+    width: 1000,   // 改窄，模仿手机/工具宽度
     height: 600,  // 高度适中
     useContentSize: true, // 确保内容区域有这么大
     resizable: true, // 允许调整，但你可以设为 false 固定大小
-    minWidth: 420,   // 限制最小宽度
+    minWidth: 1000,   // 限制最小宽度
     minHeight: 600,
+    maximizable: true,
+    minimizable: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
     },

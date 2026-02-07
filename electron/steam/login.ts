@@ -103,8 +103,8 @@ class SteamLoginExecutor {
                 error_message: e.message
             });
             // 出错后是否清理 Session 取决于业务，如果是密码错，建议清理；如果是 2FA 错，保留 Session
-            if (e.eresult !== EResult.InvalidPassword && e.eresult !== EResult.AccountLogonDenied) {
-                this.cancelLogin(accountName);
+            if (e.eresult === EResult.InvalidPassword || e.eresult === EResult.AccountLogonDenied) {
+                this.cancelLogin(accountName).then();
             }
         }
     }
@@ -180,7 +180,8 @@ class SteamLoginExecutor {
                 status: 'Timeout',
                 error_message: 'Connection timed out'
             });
-            this.cancelLogin(accountName); // 超时通常清理掉比较好
+            // 超时通常清理掉比较好
+            this.cancelLogin(accountName).then();
         });
     }
 
@@ -207,7 +208,7 @@ class SteamLoginExecutor {
         } catch (e: any) {
             this._sendLoginMessage({
                 account_name: accountName,
-                result: EResult.Fail,
+                result: e.eresult || EResult.Fail,
                 status: 'Failed',
                 error_message: 'Failed to retrieve cookies'
             });

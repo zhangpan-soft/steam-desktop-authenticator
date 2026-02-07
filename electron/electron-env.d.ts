@@ -186,9 +186,18 @@ interface SteamLoginEvent {
     account_name: string;      // 关键：必须带上账号名，前端才知道是哪个账号
     result: EResult;           // 结果代码
     status?: 'LoginSuccess' | 'Need2FA' | 'Converting' | 'Failed' | 'Timeout'; // 状态描述
-    data?: any;                // 成功时的 Cookies/Token 数据
+    data?: {
+        access_token: string
+        refresh_token: string
+        steamid: string
+        account_name: string
+        cookies: string[]
+    };                // 成功时的 Cookies/Token 数据
     error_message?: string;    // 错误信息
-    valid_actions?: any[];     // 需要 2FA 时，告诉前端是邮件还是手机令牌
+    valid_actions?: {
+        type: number
+        detail?: string
+    }[];     // 需要 2FA 时，告诉前端是邮件还是手机令牌
 }
 
 interface LoginOptions {

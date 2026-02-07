@@ -34,7 +34,15 @@ type LoginFormType = {
   loginType: 'NewAccount' | 'ImportSda' | 'RefreshToken',
   passwordLocked: boolean,
   passwordInputType: 'password' | 'text',
-  rules: FormRules
+  rules: FormRules,
+  steamGuardCodeText: string,
+  currentAuthResult: {
+    access_token: string
+    refresh_token: string
+    steamid: string
+    cookies: string[]
+    account_name: string
+  }
 }
 
 const defaultAccountNameRules: FormItemRule[] = [
@@ -89,7 +97,15 @@ const defaultLoginForm: LoginFormType = {
     account_name: [...defaultAccountNameRules],
     password: [...defaultPasswordRules],
     steamGuardCode: [...defaultSteamGuardCodeRules]
-  }
+  },
+  currentAuthResult: {
+    access_token: '',
+    refresh_token: '',
+    steamid: '',
+    account_name: '',
+    cookies: []
+  },
+  steamGuardCodeText: ''
 }
 
 const currentData = reactive<CurrentDataType>({
@@ -204,333 +220,346 @@ onMounted(() => {
 
 window.ipcRenderer.on('steam:message:login-status-changed', (event, args: SteamLoginEvent) => {
   console.log('----------------------')
-  console.log(event,args)
-  if (currentData.loginForm.account_name !== args.account_name){
-    window.ipcRenderer.invoke('steam:cancelLogin',{account_name: currentData.loginForm.account_name}).then()
+  console.log(event, args)
+  if (currentData.loginForm.account_name !== args.account_name) {
+    window.ipcRenderer.invoke('steam:cancelLogin', {account_name: currentData.loginForm.account_name}).then()
     return
   }
-  if (args.status === 'LoginSuccess'){
+  if (args.status === 'LoginSuccess') {
     // todo
     ElMessage.success('Login Success')
-    currentData.loginForm = {...defaultLoginForm}
     currentData.showLoginModal = false
-  } else if (args.status === 'Timeout'){
+    currentData.loginForm.currentAuthResult.access_token = args?.data?.access_token as string
+    currentData.loginForm.currentAuthResult.refresh_token = args?.data?.refresh_token as string
+    currentData.loginForm.currentAuthResult.steamid = args?.data?.steamid as string
+    currentData.loginForm.currentAuthResult.cookies = args?.data?.cookies as string[]
+    currentData.loginForm.currentAuthResult.account_name = args?.data?.account_name as string
+
+    if (currentData.loginForm.loginType === 'ImportSda') {
+
+    } else if (currentData.loginForm.loginType === 'RefreshToken') {
+
+    } else if (currentData.loginForm.loginType === 'NewAccount') {
+
+    }
+  } else if (args.status === 'Timeout') {
     ElMessage.error('Login Timeout, Please Re-Try Later')
-    window.ipcRenderer.invoke('steam:cancelLogin',{account_name: currentData.loginForm.account_name}).then()
-  } else if (args.status === 'Need2FA'){
+    window.ipcRenderer.invoke('steam:cancelLogin', {account_name: currentData.loginForm.account_name}).then()
+  } else if (args.status === 'Need2FA') {
     currentData.loginForm.showSteamGuardCode = true
     currentData.loginForm.showAccountName = false
     currentData.loginForm.showPassword = false
     currentData.loginForm.rules['steamGuardCode'] = [...defaultSteamGuardCodeRules]
+    if (args.valid_actions) {
+      if (args.valid_actions.find(value => value.type === 3 || value.type === 4)) {
+        currentData.loginForm.steamGuardCodeText = 'Please Input SteamGuard Code Or Confirm In Your SteamGuard App'
+      } else if (args.valid_actions.find(value => value.type === 2 || value.type === 5)) {
+        currentData.loginForm.steamGuardCodeText = 'Please Input SteamGuard Code Or Confirm In Your Email'
+      } else {
+        currentData.loginForm.steamGuardCodeText = 'Please Input SteamGuard Code Or Confirm In Your Machine'
+      }
+    }
   } else if (args.result) {
     ElMessage.error(`Login Failed, Please Re-Try Later.${args.result}`)
-    window.ipcRenderer.invoke('steam:cancelLogin',{account_name: currentData.loginForm.account_name}).then()
+    window.ipcRenderer.invoke('steam:cancelLogin', {account_name: currentData.loginForm.account_name}).then()
   } else if (args.error_message) {
     ElMessage.error(`Login Failed, ${args.error_message}.`)
-    window.ipcRenderer.invoke('steam:cancelLogin',{account_name: currentData.loginForm.account_name}).then()
+    window.ipcRenderer.invoke('steam:cancelLogin', {account_name: currentData.loginForm.account_name}).then()
   } else {
     ElMessage.error(`Login Failed, Please Re-Try Later.`)
-    window.ipcRenderer.invoke('steam:cancelLogin',{account_name: currentData.loginForm.account_name}).then()
+    window.ipcRenderer.invoke('steam:cancelLogin', {account_name: currentData.loginForm.account_name}).then()
   }
 })
 </script>
 
 <template>
-  <div class="app-container">
+  <el-splitter style="padding: 5px; height: 100%">
+    <el-splitter-panel size="420px">
+      <div class="left-panel-container">
+        <!--  顶部菜单  -->
+        <el-header>
+          <el-card>
+            <el-dropdown trigger="click" size="small">
+              <span class="menu-item-text">File</span>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item
+                      @click="currentData.showImportAccountModal=true;currentData.importAccountForm.passkey=''">
+                    Import Account
+                  </el-dropdown-item>
+                  <el-dropdown-item @click="currentData.showSettingsModal=true">Settings</el-dropdown-item>
+                  <el-dropdown-item divided @click="handleExit">Exit</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
 
-    <!--  顶部菜单  -->
-    <div class="custom-menubar">
-      <el-dropdown trigger="click" size="small">
-        <span class="menu-item-text">File</span>
-        <template #dropdown>
-          <el-dropdown-menu>
-            <el-dropdown-item @click="currentData.showImportAccountModal=true;currentData.importAccountForm.passkey=''">
-              Import Account
-            </el-dropdown-item>
-            <el-dropdown-item @click="currentData.showSettingsModal=true">Settings</el-dropdown-item>
-            <el-dropdown-item divided @click="handleExit">Exit</el-dropdown-item>
-          </el-dropdown-menu>
-        </template>
-      </el-dropdown>
+            <el-dropdown trigger="click" size="small">
+              <span class="menu-item-text">Selected Account</span>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item>Login again</el-dropdown-item>
+                  <el-dropdown-item>Force refresh</el-dropdown-item>
+                  <el-dropdown-item divided>Remove</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+          </el-card>
+        </el-header>
+        <el-main>
 
-      <el-dropdown trigger="click" size="small">
-        <span class="menu-item-text">Selected Account</span>
-        <template #dropdown>
-          <el-dropdown-menu>
-            <el-dropdown-item>Login again</el-dropdown-item>
-            <el-dropdown-item>Force refresh</el-dropdown-item>
-            <el-dropdown-item divided>Remove</el-dropdown-item>
-          </el-dropdown-menu>
-        </template>
-      </el-dropdown>
-    </div>
-    <!--  核心内容  -->
-    <div class="main-content">
-      <!--   顶部按钮   -->
-      <div class="header-actions">
-        <el-button-group class="full-width-group">
-          <el-button plain @click="handleSetupNewAccount">Setup New Account</el-button>
-          <el-button plain>Setup Encryption</el-button>
-        </el-button-group>
-      </div>
-
-      <div class="section-card">
-        <div class="section-title">Login Token</div>
-        <div class="token-wrapper">
-          <el-input
-              v-model="runtimeContext.token"
-              readonly
-              class="token-input"
-          >
-            <template #suffix>
-              <el-button type="primary" link @click="copyToken">Copy</el-button>
+          <el-card>
+            <el-button-group class="full-width-group">
+              <el-button plain @click="handleSetupNewAccount" size="small">Setup New Account</el-button>
+              <el-button plain size="small">Setup Encryption</el-button>
+            </el-button-group>
+          </el-card>
+          <el-card>
+            <el-input
+                v-model="runtimeContext.token"
+                readonly
+                class="token-input"
+                size="large"
+            >
+              <template #suffix>
+                <el-button type="primary" link @click="copyToken">Copy</el-button>
+              </template>
+            </el-input>
+            <el-progress :percentage="runtimeContext.progress"
+                         :show-text="false"
+                         :status="runtimeContext.progress>50? 'success': runtimeContext.progress>30?'warning':'exception'"
+                         :text-inside="true"/>
+          </el-card>
+          <el-card>
+            <el-button type="default" plain class="full-width-btn">
+              View Confirmations
+            </el-button>
+          </el-card>
+          <el-card class="account-list-card">
+            <el-empty v-if="settings.entries.length===0" description="No accounts loaded"/>
+            <li v-else
+                v-for="acc in settings.entries"
+                :key="acc.steamid"
+                @click="selectAccount(acc)">
+              <el-text :type="runtimeContext.selectedSteamid === acc.steamid?'primary':'default'">
+                {{ acc.filename.toString().split(".")[0] }}
+              </el-text>
+            </li>
+            <template #footer>
+              <el-row>
+                <el-input v-model="currentData.filterText" size="small">
+                  <template #prefix>Filter:</template>
+                </el-input>
+              </el-row>
             </template>
-          </el-input>
-          <div class="progress-bar">
-            <div class="progress-fill" :style="{ width: runtimeContext.progress + '%' }"></div>
-          </div>
-        </div>
+          </el-card>
+        </el-main>
+        <el-footer>
+          <el-row justify="space-between" align="middle" style="height: 100%; padding: 0 5px;">
+            <el-text size="small">Check for updates</el-text>
+            <el-text size="small">v1.0.15</el-text>
+          </el-row>
+        </el-footer>
       </div>
+    </el-splitter-panel>
+    <el-splitter-panel>
 
-      <div class="section-card">
-        <div class="section-title">Account</div>
-        <el-button type="primary" plain class="full-width-btn">
-          View Confirmations
-        </el-button>
-      </div>
-
-      <div class="list-section">
-        <div class="list-container">
-          <el-empty v-if="settings.entries.length === 0" :image-size="60" description="No accounts loaded"/>
-
-          <div
-              v-else
-              v-for="acc in settings.entries"
-              :key="acc.steamid"
-              class="account-item"
-              :class="{ 'is-selected': runtimeContext.selectedSteamid === acc.steamid }"
-              @click="selectAccount(acc)"
-          >
-            <div class="account-info">
-              <div class="account-name">
-                <el-text :type="runtimeContext.selectedSteamid === acc.steamid?'primary':'default'">
-                  {{ acc.filename.toString().split(".")[0] }}
-                </el-text>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      <div class="footer">
-        <div class="filter-row">
-          <span class="label">Filter:</span>
-          <el-input v-model="currentData.filterText" size="small" class="filter-input"/>
-        </div>
-        <div class="status-row">
-          <el-link type="info" :underline="false">Check for updates</el-link>
-          <span class="version">v1.0.15</span>
-        </div>
-      </div>
-
-    </div>
-
-    <el-dialog
-        v-model="currentData.showImportAccountModal"
-        title="Import Account"
-        width="340px"
-        :close-on-click-modal="false"
-        center
-        align-center
-        append-to-body>
-      <div class="login-form">
-        <div class="form-row">
-          <p class="login-desc">
-            Enter your encryption passkey if your .maFile is encrypted:
-          </p>
-          <el-input v-model="currentData.importAccountForm.passkey" placeholder=""/>
-        </div>
+    </el-splitter-panel>
+  </el-splitter>
+  <el-dialog
+      v-model="currentData.showImportAccountModal"
+      title="Import Account"
+      width="340px"
+      :close-on-click-modal="false"
+      center
+      align-center
+      append-to-body>
+    <div class="login-form">
+      <div class="form-row">
         <p class="login-desc">
-          If you import an encrypted .maFile, the manifest file must be next to it.
+          Enter your encryption passkey if your .maFile is encrypted:
         </p>
-        <div class="dialog-footer">
-          <el-button type="default" @click="currentData.showImportAccountModal = false">Cancel</el-button>
-          <el-button type="default" @click="handleImportAccountConfirm">Select .maFile file to Import</el-button>
-        </div>
+        <el-input v-model="currentData.importAccountForm.passkey" placeholder=""/>
       </div>
-    </el-dialog>
+      <p class="login-desc">
+        If you import an encrypted .maFile, the manifest file must be next to it.
+      </p>
+      <div class="dialog-footer">
+        <el-button type="default" @click="currentData.showImportAccountModal = false">Cancel</el-button>
+        <el-button type="default" @click="handleImportAccountConfirm">Select .maFile file to Import</el-button>
+      </div>
+    </div>
+  </el-dialog>
 
-    <el-dialog
-        v-model="currentData.showSdaPasskeyModal"
-        title="Input SDA Passkey"
-        width="340px"
-        :close-on-click-modal="false"
-        :close-on-press-escape="false"
-        :show-close="false"
-        center
-        align-center
-        append-to-body>
-      <el-input v-model="runtimeContext.passkey" placeholder="Please Input SDA Passkey">
-        <template #append @click="currentData.showSdaPasskeyModal = false">确定</template>
-      </el-input>
-    </el-dialog>
+  <el-dialog
+      v-model="currentData.showSdaPasskeyModal"
+      title="Input SDA Passkey"
+      width="340px"
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
+      :show-close="false"
+      center
+      align-center
+      append-to-body>
+    <el-input v-model="runtimeContext.passkey" placeholder="Please Input SDA Passkey">
+      <template #append @click="currentData.showSdaPasskeyModal = false">确定</template>
+    </el-input>
+  </el-dialog>
 
-    <el-dialog
-        v-model="currentData.showInitModal"
-        title="Initializing Settings"
-        width="340px"
-        :close-on-click-modal="false"
-        :close-on-press-escape="false"
-        :show-close="false"
-        center
-        align-center
-        append-to-body>
-      <el-row>
-        <el-text type="info" size="small">
-          Please Select the MaFiles Folder
+  <el-dialog
+      v-model="currentData.showInitModal"
+      title="Initializing Settings"
+      width="340px"
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
+      :show-close="false"
+      center
+      align-center
+      append-to-body>
+    <el-row>
+      <el-text type="info" size="small">
+        Please Select the MaFiles Folder
+      </el-text>
+    </el-row>
+    <el-row>
+      <el-button type="default" style="width: 100%" @click="initialSelect(1)">Default</el-button>
+    </el-row>
+    <el-row>
+      <el-button type="default" style="width: 100%" @click="initialSelect(2)">Custom</el-button>
+    </el-row>
+  </el-dialog>
+
+  <el-dialog
+      v-model="currentData.showLoginModal"
+      title="Steam Login"
+      width="340px"
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
+      :show-close="false"
+      center
+      align-center
+      append-to-body>
+    <el-form :model="currentData.loginForm" label-width="auto" label-position="top" ref="loginFormRef"
+             :rules="currentData.loginForm.rules">
+      <el-form-item prop="account_name" label="Account" v-if="currentData.loginForm.showAccountName">
+        <el-input v-model="currentData.loginForm.account_name"
+                  :readonly="currentData.loginForm.loginType==='ImportSda'">
+          <template #prefix>
+            <el-icon>
+              <UserFilled/>
+            </el-icon>
+          </template>
+        </el-input>
+      </el-form-item>
+      <el-form-item prop="password" label="Password" v-if="currentData.loginForm.showPassword">
+        <el-input v-model="currentData.loginForm.password" :type="currentData.loginForm.passwordInputType">
+          <template #prefix>
+            <el-icon v-if="currentData.loginForm.passwordLocked">
+              <Lock/>
+            </el-icon>
+            <el-icon v-if="!currentData.loginForm.passwordLocked">
+              <Unlock/>
+            </el-icon>
+          </template>
+          <template #suffix>
+            <el-icon v-if="currentData.loginForm.passwordLocked"
+                     @click="currentData.loginForm.passwordInputType='text';currentData.loginForm.passwordLocked=false">
+              <Hide/>
+            </el-icon>
+            <el-icon v-if="!currentData.loginForm.passwordLocked"
+                     @click="currentData.loginForm.passwordInputType='password';currentData.loginForm.passwordLocked=true">
+              <View/>
+            </el-icon>
+          </template>
+        </el-input>
+      </el-form-item>
+      <el-form-item prop="steamGuardCode" label="Steam Guard" v-if="currentData.loginForm.showSteamGuardCode">
+        <el-text size="small">
+          {{ currentData.loginForm.steamGuardCodeText }}
         </el-text>
-      </el-row>
-      <el-row>
-        <el-button type="default" style="width: 100%" @click="initialSelect(1)">Default</el-button>
-      </el-row>
-      <el-row>
-        <el-button type="default" style="width: 100%" @click="initialSelect(2)">Custom</el-button>
-      </el-row>
-    </el-dialog>
+        <el-input v-model="currentData.loginForm.steamGuardCode"/>
+      </el-form-item>
+      <el-form-item v-if="currentData.loginForm.showPassword && currentData.loginForm.showAccountName">
+        <el-button type="default" :loading="currentData.loginForm.accountPasswordLoginCancelLoading"
+                   @click="handleAccountPasswordLoginCancel">Cancel
+        </el-button>
+        <el-button type="default" :loading="currentData.loginForm.accountPasswordLoginConfirmLoading"
+                   @click="handleAccountPasswordLoginConfirm(loginFormRef)">Confirm
+        </el-button>
+      </el-form-item>
+      <el-form-item v-if="currentData.loginForm.showSteamGuardCode">
+        <el-button type="default" :loading="currentData.loginForm.steamGuardCodeCancelLoading"
+                   @click="handleSteamGuardCodeCancel">Cancel
+        </el-button>
+        <el-button type="default" :loading="currentData.loginForm.steamGuardCodeConfirmLoading"
+                   @click="handleSteamGuardCodeConfirm">Confirm
+        </el-button>
+      </el-form-item>
+    </el-form>
+  </el-dialog>
 
-    <el-dialog
-        v-model="currentData.showLoginModal"
-        title="Steam Login"
-        width="340px"
-        :close-on-click-modal="false"
-        :close-on-press-escape="false"
-        :show-close="false"
-        center
-        align-center
-        append-to-body>
-      <el-form :model="currentData.loginForm" label-width="auto" label-position="top" ref="loginFormRef"
-               :rules="currentData.loginForm.rules">
-        <el-form-item prop="account_name" label="Account" v-if="currentData.loginForm.showAccountName">
-          <el-input v-model="currentData.loginForm.account_name"
-                    :readonly="currentData.loginForm.loginType==='ImportSda'">
-            <template #prefix>
-              <el-icon>
-                <UserFilled/>
-              </el-icon>
-            </template>
-          </el-input>
-        </el-form-item>
-        <el-form-item prop="password" label="Password" v-if="currentData.loginForm.showPassword">
-          <el-input v-model="currentData.loginForm.password" :type="currentData.loginForm.passwordInputType">
-            <template #prefix>
-              <el-icon v-if="currentData.loginForm.passwordLocked">
-                <Lock/>
-              </el-icon>
-              <el-icon v-if="!currentData.loginForm.passwordLocked">
-                <Unlock/>
-              </el-icon>
-            </template>
-            <template #suffix>
-              <el-icon v-if="currentData.loginForm.passwordLocked"
-                       @click="currentData.loginForm.passwordInputType='text';currentData.loginForm.passwordLocked=false">
-                <Hide/>
-              </el-icon>
-              <el-icon v-if="!currentData.loginForm.passwordLocked"
-                       @click="currentData.loginForm.passwordInputType='password';currentData.loginForm.passwordLocked=true">
-                <View/>
-              </el-icon>
-            </template>
-          </el-input>
-        </el-form-item>
-        <el-form-item prop="steamGuardCode" label="Steam Guard" v-if="currentData.loginForm.showSteamGuardCode">
-          <el-text size="small">
-            Please enter your Steam Guard Code Or approve login on the Steam Guard App
-          </el-text>
-          <el-input v-model="currentData.loginForm.steamGuardCode"/>
-        </el-form-item>
-        <el-form-item v-if="currentData.loginForm.showPassword && currentData.loginForm.showAccountName">
-          <el-button type="default" :loading="currentData.loginForm.accountPasswordLoginCancelLoading"
-                     @click="handleAccountPasswordLoginCancel">Cancel
-          </el-button>
-          <el-button type="default" :loading="currentData.loginForm.accountPasswordLoginConfirmLoading"
-                     @click="handleAccountPasswordLoginConfirm(loginFormRef)">Confirm
-          </el-button>
-        </el-form-item>
-        <el-form-item v-if="currentData.loginForm.showSteamGuardCode">
-          <el-button type="default" :loading="currentData.loginForm.steamGuardCodeCancelLoading"
-                     @click="handleSteamGuardCodeCancel">Cancel
-          </el-button>
-          <el-button type="default" :loading="currentData.loginForm.steamGuardCodeConfirmLoading"
-                     @click="handleSteamGuardCodeConfirm">Confirm
-          </el-button>
-        </el-form-item>
-      </el-form>
-    </el-dialog>
+  <el-dialog
+      v-model="currentData.showSettingsModal"
+      title="Settings"
+      width="340px"
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
+      :show-close="true"
+      center
+      align-center
+      append-to-body
+  >
+    <el-row class="settings-row">
+      <el-checkbox v-model="settings.periodic_checking" size="small"/>
+      <el-text size="small" class="settings-text"
+               @click="settings.periodic_checking = !settings.periodic_checking">
+        Periodically check for new confirmations and show a popup when they arrive
+      </el-text>
+    </el-row>
 
-    <el-dialog
-        v-model="currentData.showSettingsModal"
-        title="Settings"
-        width="340px"
-        :close-on-click-modal="false"
-        :close-on-press-escape="false"
-        :show-close="true"
-        center
-        align-center
-        append-to-body
-    >
-      <el-row class="settings-row">
-        <el-checkbox v-model="settings.periodic_checking" size="small"/>
-        <el-text size="small" class="settings-text" @click="settings.periodic_checking = !settings.periodic_checking">
-          Periodically check for new confirmations and show a popup when they arrive
-        </el-text>
-      </el-row>
+    <el-row class="settings-row">
+      <el-input
+          v-model="settings.periodic_checking_interval"
+          type="number"
+          size="small"
+          style="width: 50px; flex-shrink: 0;"
+      />
+      <el-text size="small" class="settings-text">
+        Seconds between checking for confirmations
+      </el-text>
+    </el-row>
 
-      <el-row class="settings-row">
-        <el-input
-            v-model="settings.periodic_checking_interval"
-            type="number"
-            size="small"
-            style="width: 50px; flex-shrink: 0;"
-        />
-        <el-text size="small" class="settings-text">
-          Seconds between checking for confirmations
-        </el-text>
-      </el-row>
+    <el-row class="settings-row">
+      <el-checkbox v-model="settings.periodic_checking_checkall" size="small"/>
+      <el-text size="small" class="settings-text"
+               @click="settings.periodic_checking_checkall = !settings.periodic_checking_checkall">
+        Check all accounts for confirmations
+      </el-text>
+    </el-row>
 
-      <el-row class="settings-row">
-        <el-checkbox v-model="settings.periodic_checking_checkall" size="small"/>
-        <el-text size="small" class="settings-text"
-                 @click="settings.periodic_checking_checkall = !settings.periodic_checking_checkall">
-          Check all accounts for confirmations
-        </el-text>
-      </el-row>
+    <el-row class="settings-row">
+      <el-checkbox v-model="settings.auto_confirm_market_transactions" size="small"/>
+      <el-text size="small" class="settings-text"
+               @click="settings.auto_confirm_market_transactions = !settings.auto_confirm_market_transactions">
+        Auto-confirm market transactions
+      </el-text>
+    </el-row>
 
-      <el-row class="settings-row">
-        <el-checkbox v-model="settings.auto_confirm_market_transactions" size="small"/>
-        <el-text size="small" class="settings-text"
-                 @click="settings.auto_confirm_market_transactions = !settings.auto_confirm_market_transactions">
-          Auto-confirm market transactions
-        </el-text>
-      </el-row>
+    <el-row class="settings-row">
+      <el-checkbox v-model="settings.auto_confirm_trades" size="small"/>
+      <el-text size="small" class="settings-text"
+               @click="settings.auto_confirm_trades = !settings.auto_confirm_trades">
+        Auto-confirm transactions
+      </el-text>
+    </el-row>
+    <el-row class="settings-row">
+      <el-text size="small" class="settings-text">
+        Please setting the httpProxy or socksProxy. If in China
+      </el-text>
+      <el-input v-model="settings.proxy" size="small"
+                placeholder="http[s]|socks5://username@password:ip:port"></el-input>
+    </el-row>
 
-      <el-row class="settings-row">
-        <el-checkbox v-model="settings.auto_confirm_trades" size="small"/>
-        <el-text size="small" class="settings-text"
-                 @click="settings.auto_confirm_trades = !settings.auto_confirm_trades">
-          Auto-confirm transactions
-        </el-text>
-      </el-row>
-      <el-row class="settings-row">
-        <el-text size="small" class="settings-text">
-          Please setting the httpProxy or socksProxy. If in China
-        </el-text>
-        <el-input v-model="settings.proxy" size="small"
-                  placeholder="http[s]|socks5://username@password:ip:port"></el-input>
-      </el-row>
-
-    </el-dialog>
-  </div>
+  </el-dialog>
 </template>
 
 <style>
@@ -581,29 +610,7 @@ html, body {
 </style>
 
 <style scoped>
-/* App 容器 */
-.app-container {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  width: 100vw;
-  background-color: #f5f7fa;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  box-sizing: border-box;
-}
-
 /* 菜单栏 */
-.custom-menubar {
-  height: 36px;
-  background: #ffffff;
-  border-bottom: 1px solid #e4e7ed;
-  display: flex;
-  align-items: center;
-  padding: 0 10px;
-  flex-shrink: 0;
-  z-index: 10;
-}
-
 .menu-item-text {
   font-size: 13px;
   color: #303133;
@@ -617,39 +624,7 @@ html, body {
   background-color: #f2f3f5;
 }
 
-/* 主内容区 */
-.main-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding: 12px;
-  overflow: hidden;
-  gap: 12px;
-}
-
-/* 通用卡片 */
-.section-card {
-  background: #fff;
-  border: 1px solid #e4e7ed;
-  border-radius: 6px;
-  padding: 10px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.section-title {
-  font-size: 12px;
-  color: #909399;
-  font-weight: 600;
-  margin-bottom: 6px;
-}
-
 /* 顶部按钮 */
-.header-actions {
-  width: 100%;
-}
-
 .full-width-group {
   display: flex;
   width: 100%;
@@ -657,120 +632,6 @@ html, body {
 
 .full-width-group .el-button {
   flex: 1;
-}
-
-/* Token */
-.token-wrapper {
-  position: relative;
-}
-
-.progress-bar {
-  height: 4px;
-  background: #f0f2f5;
-  margin-top: 6px;
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: #67c23a;
-  transition: width 0.1s linear;
-}
-
-/* 列表区域 */
-.list-section {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.list-container {
-  flex: 1;
-  background: #fff;
-  border: 1px solid #e4e7ed;
-  border-radius: 6px;
-  overflow-y: auto;
-  padding: 4px;
-}
-
-/* 列表项样式 */
-.account-item {
-  display: flex;
-  align-items: center;
-  padding: 8px 10px;
-  border-bottom: 1px solid #f0f0f0;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  border-radius: 4px;
-  margin-bottom: 2px;
-}
-
-.account-item:hover {
-  background-color: #f5f7fa;
-}
-
-.account-item.is-selected {
-  background-color: #ecf5ff;
-  border-left: 3px solid #409EFF;
-}
-
-.account-avatar {
-  background-color: #c0c4cc;
-  margin-right: 10px;
-  flex-shrink: 0;
-}
-
-.account-info {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.account-name {
-  font-size: 13px;
-  font-weight: 500;
-  color: #303133;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.account-code {
-  font-size: 12px;
-  color: #909399;
-  font-family: monospace;
-  margin-top: 2px;
-}
-
-/* 底部区域 */
-.footer {
-  flex-shrink: 0;
-}
-
-.filter-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
-}
-
-.filter-input {
-  flex: 1;
-}
-
-.label {
-  font-size: 12px;
-  color: #909399;
-  white-space: nowrap;
-}
-
-.status-row {
-  display: flex;
-  justify-content: space-between;
-  font-size: 11px;
-  color: #c0c4cc;
 }
 
 .full-width-btn {
@@ -804,7 +665,51 @@ html, body {
   justify-content: flex-end;
 }
 
-.login-btn {
-  width: 100px;
+.el-header{
+  --el-header-padding: 0px;
+  --el-header-height: 35px;
+}
+.el-main {
+  --el-main-padding: 0px;
+}
+
+.el-footer {
+  --el-footer-padding: 0px;
+  --el-footer-height: 30px;
+}
+
+.el-card {
+  --el-card-padding: 5px;
+  margin-top: 5px;
+  margin-right: 5px;
+}
+
+/* New Layout Styles */
+.left-panel-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.el-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.account-list-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.account-list-card :deep(.el-card__body) {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 }
 </style>
