@@ -99,17 +99,23 @@ export async function readMaFile(maFilePath: string, options?:{passkey?: string,
     const maFileParse = path.parse(maFilePath)
     if (options && options?.passkey){
         const _ = await fs.readFile(maFilePath, 'utf8')
+        const data = SDAFileEncryptor.decrypt(_, options.passkey, options?.salt??'', options?.iv??'')
+        const _data = JSON.parse(data)
         return {
-            account: maFileParse.name,
+            account_name: _data.account_name,
             maFileFilename: maFileParse.base,
-            maFileContent: SDAFileEncryptor.decrypt(_, options.passkey, options?.salt??'', options?.iv??'')
+            maFileContent: data,
+            data: _data
         }
     } else {
         const data = await fs.readFile(maFilePath, 'utf8')
+        console.log('=================', data)
+        const _data = JSON.parse(data)
         return {
-            account: maFileParse.name,
+            account_name: _data.account_name,
             maFileFilename: maFileParse.base,
-            maFileContent: data
+            maFileContent: data,
+            data: _data
         }
     }
 }
@@ -123,7 +129,8 @@ export async function saveMaFile(content: string, password?:string){
         steamid,
         filename: `${account_name}.maFile`,
         encryption_iv: null,
-        encryption_salt: null
+        encryption_salt: null,
+        account_name: _.account_name
     }
     if (password){
         const encrypted = SDAFileEncryptor.encrypt(content, password)

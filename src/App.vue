@@ -17,7 +17,8 @@ type CurrentDataType = {
   showSdaPasskeyModal: boolean,
   showInitModal: boolean,
   loginForm: LoginFormType,
-  showSettingsModal: boolean
+  showSettingsModal: boolean,
+  currentMaFileContent: string
 }
 
 type LoginFormType = {
@@ -31,18 +32,11 @@ type LoginFormType = {
   accountPasswordLoginConfirmLoading: boolean
   steamGuardCodeCancelLoading: boolean
   steamGuardCodeConfirmLoading: boolean
-  loginType: 'NewAccount' | 'ImportSda' | 'RefreshToken',
+  loginType: 'NewAccount' | 'ImportSda' | 'RefreshToken' | 'ReLogin',
   passwordLocked: boolean,
   passwordInputType: 'password' | 'text',
   rules: FormRules,
   steamGuardCodeText: string,
-  currentAuthResult: {
-    access_token: string
-    refresh_token: string
-    steamid: string
-    cookies: string[]
-    account_name: string
-  }
 }
 
 const defaultAccountNameRules: FormItemRule[] = [
@@ -98,13 +92,6 @@ const defaultLoginForm: LoginFormType = {
     password: [...defaultPasswordRules],
     steamGuardCode: [...defaultSteamGuardCodeRules]
   },
-  currentAuthResult: {
-    access_token: '',
-    refresh_token: '',
-    steamid: '',
-    account_name: '',
-    cookies: []
-  },
   steamGuardCodeText: ''
 }
 
@@ -118,11 +105,12 @@ const currentData = reactive<CurrentDataType>({
   filterText: '',
   showSdaPasskeyModal: false,
   showInitModal: false,
-  loginForm: {...defaultLoginForm}
+  loginForm: {...defaultLoginForm},
+  currentMaFileContent: ''
 })
 
 type SteamLoginOptions = {
-  account_name?: string,
+  account_name: string,
   password?: string,
   steamGuardCode?: string,
   refresh_token?: string,
@@ -147,7 +135,31 @@ function selectAccount(acc: any) {
 }
 
 function handleImportAccountConfirm() {
-
+  currentData.loginForm.loginType = 'ImportSda'
+  window.ipcRenderer.invoke('showOpenDialog', {
+    title: 'Select .maFile',
+    defaultPath: settings.maFilesDir,
+    properties: ['openFile'],
+    filters: [
+      {
+        name: 'maFile', extensions: ['maFile','json','txt']
+      }
+    ]
+  }).then(result=>{
+    if (result.canceled) {
+      return
+    }
+    window.ipcRenderer.invoke('importMaFile',{
+      path: result.filePaths[0],
+      passkey: currentData.importAccountForm.passkey
+    }).then(result=>{
+      currentData.showLoginModal = true
+      currentData.loginForm.account_name = result.account_name
+      currentData.currentMaFileContent = result.maFileContent
+    }).catch(err=>{
+      ElMessage.error(err.message)
+    })
+  })
 }
 
 function initialSelect(type: number) {
@@ -193,6 +205,7 @@ function handleAccountPasswordLoginConfirm(formEl: FormInstance | undefined) {
     steamLogin({
       account_name: currentData.loginForm.account_name,
       password: currentData.loginForm.password,
+      shared_secret: JSON.parse(currentData.currentMaFileContent).shared_secret
     }).then()
   })
 }
@@ -213,6 +226,75 @@ function handleSetupNewAccount() {
   currentData.loginForm.rules['steamGuardCode'] = []
 }
 
+function handleSteamLoginSuccess(event: SteamLoginEvent) {
+  const resetSession=(data: any)=>{
+    const fData:any = {...data}
+    fData.Session = {} as any
+    fData.Session.SteamID = event.data?.steamid
+    fData.Session.access_token = event.data?.access_token
+    fData.Session.refresh_token = event.data?.refresh_token
+    event.data?.cookies.forEach(item=>{
+      const _ = item.split("=")
+      if (_[0] === 'sessionid'){
+        fData.Session.sessionid = _[1]
+      }
+    })
+    fData.Session.cookies = event.data?.cookies.join(';')
+    return window.ipcRenderer.invoke('saveMaFile',{
+      content: JSON.stringify(fData),
+      passkey: runtimeContext.passkey
+    })
+  }
+
+  switch (currentData.loginForm.loginType) {
+    case 'NewAccount': {
+
+      break
+    }
+    case 'RefreshToken': {
+      const _ = settings.entries.find(item=> item.steamid === event.data?.steamid)
+      window.ipcRenderer.invoke('readMaFile', {
+        filename: _?.filename,
+        passkey: runtimeContext.passkey,
+        iv: _?.encryption_iv,
+        salt: _?.encryption_salt
+      }).then(result=>{
+        const {data} = {...result}
+        resetSession(data).then()
+      })
+      break
+    }
+    case 'ImportSda': {
+      const data = JSON.parse(currentData.currentMaFileContent)
+      resetSession(data).then(()=>{
+        ElMessage.success('Import Success')
+      }).catch((err)=>{
+        ElMessage.error(err.message)
+      }).finally(()=>{
+        currentData.showImportAccountModal = false
+        currentData.currentMaFileContent = ''
+      })
+      break
+    }
+    case 'ReLogin': {
+      const _ = settings.entries.find(item=> item.steamid === event.data?.steamid)
+      window.ipcRenderer.invoke('readMaFile', {
+        filename: _?.filename,
+        passkey: runtimeContext.passkey,
+        iv: _?.encryption_iv,
+        salt: _?.encryption_salt
+      }).then(result=>{
+        const {data} = {...result}
+        resetSession(data).then(()=>{
+          currentData.showLoginModal = false
+          ElMessage.success('Login Success')
+        })
+      })
+      break
+    }
+  }
+}
+
 
 onMounted(() => {
   currentData.showInitModal = settings.first_run
@@ -229,19 +311,7 @@ window.ipcRenderer.on('steam:message:login-status-changed', (event, args: SteamL
     // todo
     ElMessage.success('Login Success')
     currentData.showLoginModal = false
-    currentData.loginForm.currentAuthResult.access_token = args?.data?.access_token as string
-    currentData.loginForm.currentAuthResult.refresh_token = args?.data?.refresh_token as string
-    currentData.loginForm.currentAuthResult.steamid = args?.data?.steamid as string
-    currentData.loginForm.currentAuthResult.cookies = args?.data?.cookies as string[]
-    currentData.loginForm.currentAuthResult.account_name = args?.data?.account_name as string
-
-    if (currentData.loginForm.loginType === 'ImportSda') {
-
-    } else if (currentData.loginForm.loginType === 'RefreshToken') {
-
-    } else if (currentData.loginForm.loginType === 'NewAccount') {
-
-    }
+    handleSteamLoginSuccess(args)
   } else if (args.status === 'Timeout') {
     ElMessage.error('Login Timeout, Please Re-Try Later')
     window.ipcRenderer.invoke('steam:cancelLogin', {account_name: currentData.loginForm.account_name}).then()
@@ -665,10 +735,11 @@ html, body {
   justify-content: flex-end;
 }
 
-.el-header{
+.el-header {
   --el-header-padding: 0px;
   --el-header-height: 35px;
 }
+
 .el-main {
   --el-main-padding: 0px;
 }
