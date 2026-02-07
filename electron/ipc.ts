@@ -1,6 +1,6 @@
 import {dialog, ipcMain} from 'electron'
-import fs from 'node:fs/promises';
-import {readMaFile} from './ma-file.ts'
+import * as fs from 'node:fs/promises';
+import {readMaFile, saveMaFile} from './ma-file.ts'
 import {generateAuthCode} from "./steam";
 import globalStore from "./store";
 import path from "node:path";
@@ -32,10 +32,15 @@ ipcMainHandler
     })
     .handle('readMaFile', (event, args) => {
         console.log('readMaFile', args, event)
-        return readMaFile(args.path, args.password)
+        let filepath = args.path
+        if (!filepath && args.filename){
+            filepath = path.join(globalStore.getState().settings.maFilesDir, args.filename)
+        }
+        return readMaFile(filepath, {passkey: args.passkey, iv: args.iv, salt: args.salt})
     })
     .handle('saveMaFile', (event, args) => {
         console.log('saveMaFile', args, event)
+        return saveMaFile(args.content, args.passkey)
     })
     .handle('steam:login', async (event, args) => {
         console.log('steamLogin', args, event)
@@ -46,7 +51,7 @@ ipcMainHandler
         const settings = globalStore.getState().settings
         const runtimeContext = globalStore.getState().runtimeContext
         if (settings.entries) {
-            const item = settings.entries.find(s => s.filename.startsWith(args.account_name + '.'))
+            const item = settings.entries.find(s => s.account_name === args.account_name)
             if (item) {
                 const maFile = await readMaFile(path.join(settings.maFilesDir, item.filename), {
                     passkey: runtimeContext.passkey,
@@ -66,5 +71,40 @@ ipcMainHandler
         console.log('steamCancelLogin', args, event)
         return steamLoginExecutor.cancelLogin(args.account_name)
     })
+    .handle('importMaFile',async (event, args)=>{
+        console.log('importMaFile', args, event)
+        if (args.passkey){
+            const fileExists = async (filepath: string)=>{
+                return await fs.access(filepath).then(()=>{
+                    return true
+                }).catch(()=>{
+                    return false
+                })
+            }
+            let manifest_path = path.join(path.dirname(args.path),'manifest.json')
+            let exists = await fileExists(manifest_path);
+            if (!exists){
+                manifest_path = path.join(args.path,'settings.json')
+                exists = await fileExists(manifest_path)
+            }
+            if (!exists){
+                throw new Error('manifest.json not found')
+            }
+            const manifest_txt = await fs.readFile(manifest_path, 'utf8')
+            const manifest = JSON.parse(manifest_txt)
+            if (!manifest.entries || manifest.entries.length==0){
+                throw new Error('manifest.json entries is empty')
+            }
+            const maFileParse = path.parse(args.path)
+            const acc = manifest.entries.find((value:any)=> value.filename===maFileParse.name+'.'+maFileParse.ext)
+            if (!acc){
+                throw new Error('manifest.json entries is empty')
+            }
+            return readMaFile(args.path,{passkey: args.passkey, iv: acc.encryption_iv, salt: acc.encryption_salt})
+        } else {
+            return readMaFile(args.path)
+        }
+    })
+
 
 export default ipcMainHandler

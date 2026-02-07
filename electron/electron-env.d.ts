@@ -22,7 +22,7 @@ declare namespace NodeJS {
 }
 
 type ElectronMessageChannel = 'showOpenDialog' | 'readFile' | 'readMaFile' | 'saveMaFile' |'store:get-initial'
-    | 'store:renderer-update' | 'store:main-update' | 'main-process-message'
+    | 'store:renderer-update' | 'store:main-update' | 'main-process-message' | 'importMaFile'
     | SteamMessageChannel
 
 type SteamMessageChannel = 'steam:login'
@@ -148,7 +148,8 @@ interface EntryType{
     encryption_iv: string | null
     encryption_salt: string | null
     filename: string
-    steamid: string
+    steamid: string,
+    account_name: string
 }
 
 interface Settings{
