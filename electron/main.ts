@@ -34,8 +34,8 @@ const tokenInterval = setInterval(()=>{
   if (!globalStore.getState().runtimeContext.currentAccount){
     return
   }
-  if (globalStore.getState().runtimeContext.currentAccount?.steam_guard){
-    generateAuthCode(globalStore.getState().runtimeContext.currentAccount?.steam_guard?.shared_secret as string)
+  if (globalStore.getState().runtimeContext.currentAccount?.info){
+    generateAuthCode(globalStore.getState().runtimeContext.currentAccount?.info?.shared_secret as string)
       .then(code=>{
         globalStore.updateState('runtime', 'token', code)
         globalStore.updateState('runtime', 'progress', (30-(Date.now()/1000+globalStore.getState().runtimeContext.timeOffset)%30)/30 * 100)
@@ -52,7 +52,7 @@ const tokenInterval = setInterval(()=>{
       const currentAccount = globalStore.getState().runtimeContext.currentAccount
       const steamGuard: SteamGuard = result.data as SteamGuard
       if (currentAccount){
-        currentAccount.steam_guard = steamGuard
+        currentAccount.info = steamGuard
       }
       globalStore.updateState('runtime', 'currentAccount', currentAccount)
       return generateAuthCode(result.data.shared_secret)

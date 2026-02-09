@@ -74,7 +74,6 @@ class GlobalStore {
         // 接收渲染进程的更新
         ipcMain.on('store:renderer-update', (event, scope: UpdateScope, keyPath: string, value: any) => {
             // keyPath 可能是 "encrypted" 也可能是 "entries"
-            console.log('store:renderer-update', event, scope, keyPath, value)
             this.updateState(scope, keyPath, value, false);
         });
     }
@@ -95,9 +94,6 @@ class GlobalStore {
         } else {
             (this.state.runtimeContext as any)[key] = value;
         }
-
-        console.log('globalState', this.state)
-
         // 3. 通知渲染进程
         if (emitToRenderer && this.window) {
             this.window.webContents.send('store:main-update', scope, key, value);

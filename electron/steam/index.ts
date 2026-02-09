@@ -29,14 +29,16 @@ export function parseSteamResult<T>(response: IHttpResponse): SteamResponse<T> {
 
 export function parseSteamCommunityResult<T>(response: IHttpResponse): SteamResponse<T> {
     const eresult = response.getHeaders()['x-eresult']
-    const _eresult = eresult ? parseInt(eresult) : EResult.Fail
+    const _eresult = eresult ? parseInt(eresult) : undefined
     if (response.getCode() !== 200) {
+        console.log(333333333)
         return {
             eresult: _eresult || EResult.Fail,
             message: response.getText(),
             status: response.getCode(),
         }
     }
+    console.log(44444444)
     return {
         eresult: _eresult || EResult.OK,
         status: response.getCode(),

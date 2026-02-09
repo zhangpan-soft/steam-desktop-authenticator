@@ -70,7 +70,7 @@ class SteamLoginExecutor {
             if (options.refresh_token) {
                 // 6a.如果有刷新令牌，直接刷新
                 session.refreshToken = options.refresh_token;
-                this._sendLoginMessage({ account_name: accountName, result: EResult.OK, status: 'Converting' }); //以此状态告知前端正在置换
+                this._sendLoginMessage({account_name: accountName, result: EResult.OK, status: 'Converting'}); //以此状态告知前端正在置换
                 await session.refreshAccessToken();
                 // refreshAccessToken 成功后通常不会触发 authenticated 事件，需要手动处理成功逻辑，或者依赖库的行为
                 // steam-session 的 refreshAccessToken 如果成功，access_token 会更新。
@@ -117,6 +117,16 @@ class SteamLoginExecutor {
         }
     }
 
+    public async refreshLogin(account_name: string, refresh_token: string): Promise<SteamLoginEvent> {
+        let session = this._sessions.get(account_name);
+        if (!session) {
+            session = new LoginSession(EAuthTokenPlatformType.MobileApp);
+        }
+        session.refreshToken = refresh_token;
+        await session.refreshAccessToken()
+        return await this._handleSession(session, account_name)
+    }
+
     /**
      * 提交验证码 (2FA)
      */
@@ -157,7 +167,8 @@ class SteamLoginExecutor {
             try {
                 session.cancelLoginAttempt();
                 session.removeAllListeners();
-            } catch (e) { /* ignore */ }
+            } catch (e) { /* ignore */
+            }
             this._sessions.delete(account_name);
         }
     }
@@ -193,40 +204,45 @@ class SteamLoginExecutor {
         });
     }
 
-    private async _handleLoginSuccess(session: LoginSession, accountName: string) {
+    private async _handleSession(session: LoginSession, account_name: string): Promise<SteamLoginEvent> {
         try {
             const cookies = await session.getWebCookies();
             cookies.push(`${STEAM_LANGUAGE_NAME}=${DEFAULT_LANGUAGE}`)
             cookies.push(`${MOBILE_CLIENT_VERSION_NAME}=${DEFAULT_APP_VERSION}`)
             cookies.push(`${TIME_ZONE_OFFSET_NAME}=${DEFAULT_TIME_ZONE_OFFSET}`)
             cookies.push(`${STEAM_ID_NAME}=${session.steamID.getSteamID64()}`)
-            this._sendLoginMessage({
-                account_name: accountName,
+            const _s = cookies.find(value => value.startsWith("sessionid="))
+            const event: SteamLoginEvent = {
+                account_name: account_name,
                 result: EResult.OK,
                 status: 'LoginSuccess',
                 data: {
                     access_token: session.accessToken,
                     refresh_token: session.refreshToken,
                     account_name: session.accountName,
-                    steamid: session.steamID.getSteamID64(),
-                    cookies: cookies,
+                    SteamID: session.steamID.getSteamID64(),
+                    cookies: cookies.join(";"),
+                    SessionID: _s?.trim().replace('sessionid=', '') as string,
                     at: parseToken(session.accessToken).payload.exp,
                     rt: parseToken(session.refreshToken).payload.exp
                 }
-            });
-
-            // 登录成功后，Session 对象通常就不需要保留在 executor 里了（除非你要做保活）
-            // 或者转移到另一个 SessionManager 管理器中去处理后续业务
-            this._sessions.delete(accountName);
-
+            }
+            console.log('steamLoginEvent:', event)
+            return event
         } catch (e: any) {
-            this._sendLoginMessage({
-                account_name: accountName,
+            const event: SteamLoginEvent = {
+                account_name: account_name,
                 result: e.eresult || EResult.Fail,
                 status: 'Failed',
                 error_message: 'Failed to retrieve cookies'
-            });
+            }
+            console.log('steamLoginEvent:', event)
+            return event
         }
+    }
+
+    private async _handleLoginSuccess(session: LoginSession, accountName: string) {
+        this._sendLoginMessage(await this._handleSession(session, accountName))
     }
 
     private _sendLoginMessage(payload: SteamLoginEvent) {

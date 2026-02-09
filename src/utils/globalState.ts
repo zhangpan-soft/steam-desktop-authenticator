@@ -17,7 +17,6 @@ function createSyncProxy<T extends object>(scope: UpdateScope, targetObj: T): T 
 
             // 2. 如果不是来自远程的更新，说明是用户在 UI 上操作的 -> 发送 IPC
             if (!isRemoteUpdate) {
-                console.log(`[Renderer] Syncing ${scope}.${String(key)} =`, value);
                 // 注意：这里只处理了浅层属性 (如 settings.encrypted)
                 // 对于 settings.entries 这种数组的深层修改，建议单独处理或全量保存
                 window.store.syncSet(scope, String(key), value);
@@ -44,11 +43,8 @@ export async function initGlobalState() {
         runtimeContext: createSyncProxy('runtime', reactiveRuntime)
     };
 
-    console.log('[Renderer] Global State Initialized:', window.state);
-
     // 4. 监听主进程发来的更新 (比如主进程逻辑修改了数据，或者多窗口同步)
     window.store.onSyncUpdate((scope: UpdateScope, key: string, value: any) => {
-        console.log(`[Renderer] Received update from Main: ${scope}.${key}`, value);
 
         // 开启锁，避免 Proxy set 再次触发 IPC 发送
         isRemoteUpdate = true;

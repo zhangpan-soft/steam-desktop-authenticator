@@ -2,6 +2,7 @@
 import {onMounted, reactive, ref} from 'vue'
 import {Hide, Lock, Unlock, UserFilled, View} from "@element-plus/icons-vue";
 import {ElMessage, FormInstance, FormItemRule, FormRules} from "element-plus";
+import EResult from "./utils/EResult.ts";
 
 const runtimeContext = window.state.runtimeContext
 const settings = window.state.settings
@@ -19,6 +20,7 @@ type CurrentDataType = {
   loginForm: LoginFormType,
   showSettingsModal: boolean,
   currentMaFileContent: string
+  currentConfirmations: Confirmation[]
 }
 
 type LoginFormType = {
@@ -106,7 +108,8 @@ const currentData = reactive<CurrentDataType>({
   showSdaPasskeyModal: false,
   showInitModal: false,
   loginForm: {...defaultLoginForm},
-  currentMaFileContent: ''
+  currentMaFileContent: '',
+  currentConfirmations: []
 })
 
 type SteamLoginOptions = {
@@ -126,6 +129,27 @@ function handleExit() {
 
 }
 
+function handleViewConfirmations(){
+  if (!window.state.runtimeContext.currentAccount){
+    ElMessage.warning('Please select an account first')
+    return
+  }
+  window.ipcRenderer.invoke('steam:getConfirmations',)
+      .then((res:SteamResponse<ConfirmationsResponse>)=>{
+        console.log('1111111111111')
+        console.log(res)
+        if (res.eresult===EResult.OK){
+          ElMessage.success('Success')
+          currentData.currentConfirmations = res.response?.conf as Confirmation[]
+        } else {
+          ElMessage.error(res.message)
+        }
+      })
+      .catch((err:any)=>{
+        ElMessage.error(err.message)
+      })
+}
+
 function copyToken() {
   if (runtimeContext.token) {
     navigator.clipboard.writeText(runtimeContext.token).then(() => {
@@ -138,9 +162,9 @@ function copyToken() {
   }
 }
 
-function selectAccount(acc: any) {
+function selectAccount(acc: EntryType) {
   console.log('=============', acc)
-  window.state.runtimeContext.currentAccount = {steam_guard: undefined, ...acc}
+  window.state.runtimeContext.currentAccount = {...acc}
 }
 
 function handleImportAccountConfirm() {
@@ -237,18 +261,8 @@ function handleSetupNewAccount() {
 
 function handleSteamLoginSuccess(event: SteamLoginEvent) {
   const resetSession=(data: any)=>{
-    const fData:any = {...data}
-    fData.Session = {} as any
-    fData.Session.SteamID = event.data?.steamid
-    fData.Session.access_token = event.data?.access_token
-    fData.Session.refresh_token = event.data?.refresh_token
-    event.data?.cookies.forEach(item=>{
-      const _ = item.split("=")
-      if (_[0] === 'sessionid'){
-        fData.Session.sessionid = _[1]
-      }
-    })
-    fData.Session.cookies = event.data?.cookies.join(';')
+    const fData:SteamAccount = {...data}
+    fData.Session = event.data
     return window.ipcRenderer.invoke('saveMaFile',{
       content: JSON.stringify(fData),
       passkey: runtimeContext.passkey
@@ -261,7 +275,7 @@ function handleSteamLoginSuccess(event: SteamLoginEvent) {
       break
     }
     case 'RefreshToken': {
-      const _ = settings.entries.find(item=> item.steamid === event.data?.steamid)
+      const _ = settings.entries.find(item=> item.steamid === event.data?.SteamID)
       window.ipcRenderer.invoke('readMaFile', {
         filename: _?.filename,
         passkey: runtimeContext.passkey,
@@ -286,7 +300,7 @@ function handleSteamLoginSuccess(event: SteamLoginEvent) {
       break
     }
     case 'ReLogin': {
-      const _ = settings.entries.find(item=> item.steamid === event.data?.steamid)
+      const _ = settings.entries.find(item=> item.steamid === event.data?.SteamID)
       window.ipcRenderer.invoke('readMaFile', {
         filename: _?.filename,
         passkey: runtimeContext.passkey,
@@ -307,6 +321,11 @@ function handleSteamLoginSuccess(event: SteamLoginEvent) {
 
 onMounted(() => {
   currentData.showInitModal = settings.first_run
+  if (!runtimeContext.currentAccount){
+    if (settings.entries && settings.entries.length>0){
+      runtimeContext.currentAccount = {...settings.entries[0]} as EntryType
+    }
+  }
 })
 
 window.ipcRenderer.on('steam:message:login-status-changed', (event, args: SteamLoginEvent) => {
@@ -410,22 +429,24 @@ window.ipcRenderer.on('steam:message:login-status-changed', (event, args: SteamL
                          :text-inside="true"/>
           </el-card>
           <el-card>
-            <el-button type="default" plain class="full-width-btn">
+            <el-button type="default" plain class="full-width-btn" @click="handleViewConfirmations">
               View Confirmations
             </el-button>
           </el-card>
           <el-card class="account-list-card">
-            <el-empty v-if="settings.entries.length===0" description="No accounts loaded"/>
-            <el-card v-else
-                v-for="acc in settings.entries"
-                :key="acc.steamid"
-                @click="selectAccount(acc)">
-              <el-row>
-                <el-text :type="runtimeContext.currentAccount?.steamid === acc.steamid?'primary':'default'">
-                  {{ acc.account_name+'\t\t'+acc.steamid }}
-                </el-text>
-              </el-row>
-            </el-card>
+            <div class="account-list-content">
+              <el-empty v-if="settings.entries.length===0" description="No accounts loaded"/>
+              <el-card v-else
+                       v-for="acc in settings.entries"
+                       :key="acc.steamid"
+                       @click="selectAccount(acc)">
+                <el-row>
+                  <el-text :type="runtimeContext.currentAccount?.steamid === acc.steamid?'primary':'default'">
+                    {{ acc.account_name+'\t\t'+acc.steamid }}
+                  </el-text>
+                </el-row>
+              </el-card>
+            </div>
             <template #footer>
               <el-row>
                 <el-input v-model="currentData.filterText" size="small">
@@ -444,16 +465,22 @@ window.ipcRenderer.on('steam:message:login-status-changed', (event, args: SteamL
       </div>
     </el-splitter-panel>
     <el-splitter-panel>
-      <el-card>
+      <el-card class="confirmations-card">
         <template #header>
           <el-row justify="center" align="middle">
             <el-text size="large">Confirmations</el-text>
           </el-row>
-
         </template>
-        <el-card>
-
-        </el-card>
+        <div class="confirmations-content">
+          <el-card v-if="!currentData.currentConfirmations || currentData.currentConfirmations.length===0" class="empty-card">
+            <el-empty description="No Confirmations"/>
+          </el-card>
+          <el-card v-else
+                   v-for="confirmation in currentData.currentConfirmations"
+          >
+            {{JSON.stringify(confirmation)}}
+          </el-card>
+        </div>
       </el-card>
     </el-splitter-panel>
   </el-splitter>
@@ -802,7 +829,54 @@ html, body {
 
 .account-list-card :deep(.el-card__body) {
   flex: 1;
-  overflow-y: auto;
+  overflow: hidden; /* 关键：防止 body 自身滚动，交给内部容器 */
+  display: flex;
+  flex-direction: column;
+  padding: 5px;
+}
+
+.account-list-content {
+  flex: 1;
+  overflow-y: auto; /* 关键：内容过多时出现滚动条 */
   min-height: 0;
+}
+
+/* Confirmations Panel Styles */
+.confirmations-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  margin: 0 !important; /* Override default margin */
+  border: none; /* Optional: remove border if splitter handles it */
+  border-radius: 0; /* Optional: remove radius to fit panel */
+}
+
+.confirmations-card :deep(.el-card__body) {
+  flex: 1;
+  overflow-y: auto;
+  padding: 5px 5px 10px 5px; /* 底部增加到 10px */
+  display: flex;
+  flex-direction: column;
+}
+
+.confirmations-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.confirmations-content .el-card {
+  margin-right: 0; /* 修正右侧间距，使其与左侧一致 */
+  margin-bottom: 5px;
+}
+
+.empty-card {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  box-shadow: none;
 }
 </style>

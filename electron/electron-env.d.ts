@@ -21,12 +21,13 @@ declare namespace NodeJS {
     }
 }
 
-type ElectronMessageChannel = 'showOpenDialog' | 'readFile' | 'readMaFile' | 'saveMaFile' |'store:get-initial'
+type ElectronMessageChannel = 'showOpenDialog' | 'readFile' | 'readMaFile' | 'saveMaFile' | 'store:get-initial'
     | 'store:renderer-update' | 'store:main-update' | 'main-process-message' | 'importMaFile'
     | SteamMessageChannel
 
 type SteamMessageChannel = 'steam:login'
     | 'steam:submitSteamGuard' | 'steam:cancelLogin' | 'steam:message:login-status-changed'
+| 'steam:getConfirmations'
 
 // Used in Renderer process, expose in `preload.ts`
 interface Window {
@@ -56,9 +57,9 @@ interface IHttpResponse {
 
     getRequestUrls(): string[]
 
-    getHeaders(): {[key: string]: string}
+    getHeaders(): { [key: string]: string }
 
-    getCookies(): {[key: string]: string}
+    getCookies(): { [key: string]: string }
 
     getText(): string
 
@@ -69,19 +70,19 @@ interface IHttpResponse {
     getBody<T>(): T
 }
 
-interface IHttpRequestConfig{
+interface IHttpRequestConfig {
     timeout: number
     proxies?: string
 }
 
-interface IHttpRequestBuilder{
-    cookie(cookies: {[key:string]: string}): IHttpRequestBuilder
+interface IHttpRequestBuilder {
+    cookie(cookies: { [key: string]: string }): IHttpRequestBuilder
 
     cookie(name: string, value: string): IHttpRequestBuilder
 
     cookie(cookieStr: string): IHttpRequestBuilder
 
-    header(headers: {[key: string]: string}): IHttpRequestBuilder
+    header(headers: { [key: string]: string }): IHttpRequestBuilder
 
     header(name: string, value: string): IHttpRequestBuilder
 
@@ -96,7 +97,7 @@ interface IHttpRequestBuilder{
     perform(): Promise<IHttpResponse>
 }
 
-interface IHttpBody{
+interface IHttpBody {
     json(json: string): IHttpRequestBuilder
 
     json(json: object): IHttpRequestBuilder
@@ -113,24 +114,24 @@ interface IHttpBody{
 
     param(): IHttpRequestBuilder
 
-    params(nameValues:{[key: string]: any}): IHttpRequestBuilder
+    params(nameValues: { [key: string]: any }): IHttpRequestBuilder
 
     data(name: string, value: any): IHttpBody
 
-    data(nameValues:{[key: string]: any}): IHttpRequestBuilder
+    data(nameValues: { [key: string]: any }): IHttpRequestBuilder
 
     data(): IHttpRequestBuilder
 }
 
-interface IHttpParam{
+interface IHttpParam {
     param(name: string, value: any): IHttpParam
 
     param(): IHttpRequestBuilder
 
-    params(nameValues: {[key: string]: any}): IHttpRequestBuilder
+    params(nameValues: { [key: string]: any }): IHttpRequestBuilder
 }
 
-interface IHttpUri{
+interface IHttpUri {
     get(url: string): IHttpParam
 
     post(url: string): IHttpBody
@@ -144,7 +145,7 @@ interface IHttpUri{
     patch(url: string): IHttpBody
 }
 
-interface EntryType{
+interface EntryType {
     encryption_iv: string | null
     encryption_salt: string | null
     filename: string
@@ -152,7 +153,7 @@ interface EntryType{
     account_name: string
 }
 
-interface Settings{
+interface Settings {
     encrypted: boolean
     first_run: boolean
     periodic_checking: boolean
@@ -162,11 +163,11 @@ interface Settings{
     auto_confirm_trades: boolean
     maFilesDir: string
     entries: EntryType[]
-    proxy?:string
+    proxy?: string
     timeout: number
 }
 
-interface RuntimeContext{
+interface RuntimeContext {
     passkey: string
     token: string
     progress: number
@@ -174,7 +175,22 @@ interface RuntimeContext{
     timeOffset: number
     timeNextSyncTime: number
     loginSession?: any,
-    currentAccount?: EntryType & {steam_guard: SteamGuard}
+    currentAccount?: EntryType & {info?: SteamAccount}
+}
+
+interface SteamAccount extends SteamGuard{
+    Session?:SteamSession
+}
+
+interface SteamSession{
+    access_token: string
+    refresh_token: string
+    SteamID: string
+    account_name: string
+    cookies: string
+    at: number
+    rt: number
+    SessionID: string
 }
 
 type UpdateScope = 'settings' | 'runtime'
@@ -189,15 +205,7 @@ interface SteamLoginEvent {
     account_name: string;      // 关键：必须带上账号名，前端才知道是哪个账号
     result: EResult;           // 结果代码
     status?: 'LoginSuccess' | 'Need2FA' | 'Converting' | 'Failed' | 'Timeout'; // 状态描述
-    data?: {
-        access_token: string
-        refresh_token: string
-        steamid: string
-        account_name: string
-        cookies: string[]
-        at: number
-        rt: number
-    };                // 成功时的 Cookies/Token 数据
+    data?: SteamSession;                // 成功时的 Cookies/Token 数据
     error_message?: string;    // 错误信息
     valid_actions?: {
         type: number
@@ -212,7 +220,7 @@ interface LoginOptions {
     refresh_token?: string
 }
 
-interface SteamResponse<T> extends SteamApiResponse<T>{
+interface SteamResponse<T> extends SteamApiResponse<T> {
     eresult: number
     message?: string
     status: number
@@ -236,7 +244,7 @@ interface QueryTimeResponse {
     max_attempts: number
 }
 
-interface SteamGuard{
+interface SteamGuard {
     shared_secret: string
     serial_number: string
     revocation_code: string
@@ -252,19 +260,19 @@ interface SteamGuard{
     steamid: string
 }
 
-interface FinalizeAuthenticatorResponse{
+interface FinalizeAuthenticatorResponse {
     status: number
     server_time: string
     want_more: boolean
     success: boolean
 }
 
-interface RemoveAuthenticatorViaChallengeContinueResponse{
+interface RemoveAuthenticatorViaChallengeContinueResponse {
     success: boolean
     replacement_token: SteamGuard
 }
 
-interface QueryStatusResponse{
+interface QueryStatusResponse {
     state: number
     inactivation_reason: number
     authenticator_type: number
@@ -281,7 +289,7 @@ interface QueryStatusResponse{
     version: number
 }
 
-interface ConfirmationsResponse{
+interface ConfirmationsResponse {
     success: boolean
     conf: Confirmation[]
 }
@@ -302,20 +310,15 @@ interface Confirmation {
     warn: any
 }
 
-interface ConfirmationOptions{
+interface ConfirmationOptions {
     identitySecret: string,
     deviceid: string,
     steamid: string,
     cookies: string
 }
 
-interface ConfirmationAjaxOpResponse{
+interface ConfirmationAjaxOpResponse {
     success: boolean
     message: string
 }
 
-interface SendOfferOptions{
-    serverid: string
-    partner: string,
-    tradeoffermessage: string
-}

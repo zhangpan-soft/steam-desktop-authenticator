@@ -4,7 +4,8 @@ import {readMaFile, saveMaFile} from './ma-file.ts'
 import globalStore from "./store";
 import path from "node:path";
 import steamLoginExecutor from "./steam/login.ts";
-import {generateAuthCode} from "./steam/steam-community.ts";
+import {generateAuthCode, getConfirmations} from "./steam/steam-community.ts";
+import {parseToken} from "./steam";
 
 class IpcMainHandler {
 
@@ -90,8 +91,8 @@ ipcMainHandler
             if (!exists){
                 throw new Error('manifest.json not found')
             }
-            const manifest_txt = await fs.readFile(manifest_path, 'utf8')
-            const manifest = JSON.parse(manifest_txt)
+            const manifestText = await fs.readFile(manifest_path, 'utf8')
+            const manifest = JSON.parse(manifestText)
             if (!manifest.entries || manifest.entries.length==0){
                 throw new Error('manifest.json entries is empty')
             }
@@ -104,6 +105,48 @@ ipcMainHandler
         } else {
             return readMaFile(args.path)
         }
+    })
+    .handle('steam:getConfirmations', async (event, args)=>{
+        console.log('steamGetConfirmations', args, event)
+        const currentAccount = globalStore.getState().runtimeContext.currentAccount
+        if (!currentAccount){
+            throw new Error('currentAccount not found')
+        }
+        if (!currentAccount.info){
+            throw new Error('currentAccount.info not found')
+        }
+        if (!currentAccount.info.Session){
+            throw new Error('currentAccount.info.Session not found')
+        }
+        let needRefresh = false
+        if (currentAccount.info.Session.at){
+            if (Date.now()/1000 > currentAccount.info.Session.at){
+                needRefresh = true
+            }
+        } else {
+            const p:any = parseToken(currentAccount.info.Session.access_token)
+            if (Date.now()/1000 > p.exp){
+                needRefresh = true
+            }
+        }
+        if (needRefresh){
+            await steamLoginExecutor.refreshLogin(currentAccount.account_name, currentAccount.info.Session.refresh_token)
+                .then(result=>{
+                    if (currentAccount.info){
+                        currentAccount.info.Session = result.data
+                    }
+                    return saveMaFile(JSON.stringify(currentAccount.info), globalStore.getState().runtimeContext.passkey)
+                })
+                .then(()=>{
+                    globalStore.updateState('runtime', 'currentAccount', currentAccount)
+                })
+        }
+        return getConfirmations({
+            deviceid: currentAccount?.info?.device_id as string,
+            steamid: currentAccount?.steamid as string,
+            identitySecret: currentAccount?.info?.identity_secret as string,
+            cookies: currentAccount?.info?.Session?.cookies as string
+        })
     })
 
 

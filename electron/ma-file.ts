@@ -95,11 +95,16 @@ export class SDAFileEncryptor {
     }
 }
 
-export async function readMaFile(maFilePath: string, options?:{passkey?: string, iv?: string | null, salt?: string | null}){
+export async function readMaFile(maFilePath: string, options?:{passkey?: string, iv?: string | null, salt?: string | null}):Promise<{
+    account_name: string,
+    maFileFilename: string,
+    maFileContent: string,
+    data: SteamAccount
+}>{
     const maFileParse = path.parse(maFilePath)
     if (options && options?.passkey){
         const _ = await fs.readFile(maFilePath, 'utf8')
-        const data = SDAFileEncryptor.decrypt(_, options.passkey, options?.salt??'', options?.iv??'')
+        const data = SDAFileEncryptor.decrypt(_, options.passkey, options?.salt||'', options?.iv||'')
         const _data = JSON.parse(data)
         return {
             account_name: _data.account_name,
@@ -121,7 +126,13 @@ export async function readMaFile(maFilePath: string, options?:{passkey?: string,
 }
 
 export async function saveMaFile(content: string, password?:string){
+
     const state = globalStore.getState()
+    await exists(state.settings.maFilesDir).then(f=>{
+        if (!f){
+            return fs.mkdir(state.settings.maFilesDir,{recursive: true});
+        }
+    }).then()
     const _ = JSON.parse(content)
     const account_name = _.account_name
     const steamid = _.Session?.SteamID
@@ -156,3 +167,6 @@ export async function saveMaFile(content: string, password?:string){
     globalStore.updateState('settings', 'entries', state.settings.entries)
 }
 
+const exists = async (p: string)=>{
+    return fs.access(p).then(()=>true).catch(()=>false)
+}
