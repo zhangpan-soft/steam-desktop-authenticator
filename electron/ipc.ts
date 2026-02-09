@@ -1,10 +1,10 @@
 import {dialog, ipcMain} from 'electron'
 import * as fs from 'node:fs/promises';
 import {readMaFile, saveMaFile} from './ma-file.ts'
-import {generateAuthCode} from "./steam";
 import globalStore from "./store";
 import path from "node:path";
 import steamLoginExecutor from "./steam/login.ts";
+import {generateAuthCode} from "./steam/steam-community.ts";
 
 class IpcMainHandler {
 

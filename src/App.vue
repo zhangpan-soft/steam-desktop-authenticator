@@ -127,11 +127,20 @@ function handleExit() {
 }
 
 function copyToken() {
-
+  if (runtimeContext.token) {
+    navigator.clipboard.writeText(runtimeContext.token).then(() => {
+      ElMessage.success('Token copied to clipboard')
+    }).catch(() => {
+      ElMessage.error('Failed to copy token')
+    })
+  } else {
+    ElMessage.warning('No token to copy')
+  }
 }
 
 function selectAccount(acc: any) {
-
+  console.log('=============', acc)
+  window.state.runtimeContext.currentAccount = {steam_guard: undefined, ...acc}
 }
 
 function handleImportAccountConfirm() {
@@ -396,6 +405,7 @@ window.ipcRenderer.on('steam:message:login-status-changed', (event, args: SteamL
             </el-input>
             <el-progress :percentage="runtimeContext.progress"
                          :show-text="false"
+                         :indeterminate="false"
                          :status="runtimeContext.progress>50? 'success': runtimeContext.progress>30?'warning':'exception'"
                          :text-inside="true"/>
           </el-card>
@@ -406,14 +416,16 @@ window.ipcRenderer.on('steam:message:login-status-changed', (event, args: SteamL
           </el-card>
           <el-card class="account-list-card">
             <el-empty v-if="settings.entries.length===0" description="No accounts loaded"/>
-            <li v-else
+            <el-card v-else
                 v-for="acc in settings.entries"
                 :key="acc.steamid"
                 @click="selectAccount(acc)">
-              <el-text :type="runtimeContext.selectedSteamid === acc.steamid?'primary':'default'">
-                {{ acc.filename.toString().split(".")[0] }}
-              </el-text>
-            </li>
+              <el-row>
+                <el-text :type="runtimeContext.currentAccount?.steamid === acc.steamid?'primary':'default'">
+                  {{ acc.account_name+'\t\t'+acc.steamid }}
+                </el-text>
+              </el-row>
+            </el-card>
             <template #footer>
               <el-row>
                 <el-input v-model="currentData.filterText" size="small">
@@ -432,7 +444,17 @@ window.ipcRenderer.on('steam:message:login-status-changed', (event, args: SteamL
       </div>
     </el-splitter-panel>
     <el-splitter-panel>
+      <el-card>
+        <template #header>
+          <el-row justify="center" align="middle">
+            <el-text size="large">Confirmations</el-text>
+          </el-row>
 
+        </template>
+        <el-card>
+
+        </el-card>
+      </el-card>
     </el-splitter-panel>
   </el-splitter>
   <el-dialog

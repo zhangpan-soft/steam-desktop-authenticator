@@ -95,7 +95,7 @@ export class SDAFileEncryptor {
     }
 }
 
-export async function readMaFile(maFilePath: string, options?:{passkey?: string, iv: string | null, salt: string | null}){
+export async function readMaFile(maFilePath: string, options?:{passkey?: string, iv?: string | null, salt?: string | null}){
     const maFileParse = path.parse(maFilePath)
     if (options && options?.passkey){
         const _ = await fs.readFile(maFilePath, 'utf8')

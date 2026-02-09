@@ -7,6 +7,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 import globalStore from "./store";
 
 import './ipc.ts'
+import {readMaFile} from "./ma-file.ts";
+import {generateAuthCode} from "./steam/steam-community.ts";
 
 // The built directory structure
 //
@@ -27,6 +29,40 @@ export const RENDERER_DIST = path.join(process.env.APP_ROOT, 'dist')
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 'public') : RENDERER_DIST
 
 let win: BrowserWindow | null
+
+const tokenInterval = setInterval(()=>{
+  if (!globalStore.getState().runtimeContext.currentAccount){
+    return
+  }
+  if (globalStore.getState().runtimeContext.currentAccount?.steam_guard){
+    generateAuthCode(globalStore.getState().runtimeContext.currentAccount?.steam_guard?.shared_secret as string)
+      .then(code=>{
+        globalStore.updateState('runtime', 'token', code)
+        globalStore.updateState('runtime', 'progress', (30-(Date.now()/1000+globalStore.getState().runtimeContext.timeOffset)%30)/30 * 100)
+      })
+  } else {
+    readMaFile(
+        path.join(globalStore.getState().settings.maFilesDir,globalStore.getState().runtimeContext.currentAccount?.filename as string),
+        {
+          passkey: globalStore.getState().runtimeContext.passkey,
+          iv: globalStore.getState().runtimeContext.currentAccount?.encryption_iv,
+          salt: globalStore.getState().runtimeContext.currentAccount?.encryption_salt,
+        }
+    ).then(result=>{
+      const currentAccount = globalStore.getState().runtimeContext.currentAccount
+      const steamGuard: SteamGuard = result.data as SteamGuard
+      if (currentAccount){
+        currentAccount.steam_guard = steamGuard
+      }
+      globalStore.updateState('runtime', 'currentAccount', currentAccount)
+      return generateAuthCode(result.data.shared_secret)
+    }).then(code=>{
+      globalStore.updateState('runtime', 'token', code)
+      globalStore.updateState('runtime', 'progress', (30-(Date.now()/1000+globalStore.getState().runtimeContext.timeOffset)%30)/30 * 100)
+    })
+  }
+
+},1000)
 
 function createWindow() {
   win = new BrowserWindow({
@@ -68,6 +104,7 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
     win = null
+    clearInterval(tokenInterval)
   }
 })
 

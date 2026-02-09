@@ -174,6 +174,7 @@ interface RuntimeContext{
     timeOffset: number
     timeNextSyncTime: number
     loginSession?: any,
+    currentAccount?: EntryType & {steam_guard: SteamGuard}
 }
 
 type UpdateScope = 'settings' | 'runtime'
