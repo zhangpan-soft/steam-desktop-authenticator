@@ -127,7 +127,7 @@ interface IHttpParam{
 
     param(): IHttpRequestBuilder
 
-    params(nameValues: {[key: string]: any})
+    params(nameValues: {[key: string]: any}): IHttpRequestBuilder
 }
 
 interface IHttpUri{
@@ -163,6 +163,7 @@ interface Settings{
     maFilesDir: string
     entries: EntryType[]
     proxy?:string
+    timeout: number
 }
 
 interface RuntimeContext{
@@ -193,6 +194,8 @@ interface SteamLoginEvent {
         steamid: string
         account_name: string
         cookies: string[]
+        at: number
+        rt: number
     };                // 成功时的 Cookies/Token 数据
     error_message?: string;    // 错误信息
     valid_actions?: {
@@ -207,9 +210,16 @@ interface LoginOptions {
     steamGuardCode?: string
     refresh_token?: string
 }
+
+interface SteamResponse<T> extends SteamApiResponse<T>{
+    eresult: number
+    message?: string
+    status: number
+}
+
 // 1. 定义 Steam API 的外层包装结构
 interface SteamApiResponse<T> {
-    response: T
+    response?: T
 }
 
 // 2. 定义内部数据结构
@@ -223,4 +233,88 @@ interface QueryTimeResponse {
     sync_timeout: number
     try_again_seconds: number
     max_attempts: number
+}
+
+interface SteamGuard{
+    shared_secret: string
+    serial_number: string
+    revocation_code: string
+    uri: string
+    server_time: string
+    account_name: string
+    token_gid: string
+    identity_secret: string
+    secret_1: string
+    status: number
+    device_id: string
+    fully_enrolled: boolean
+    steamid: string
+}
+
+interface FinalizeAuthenticatorResponse{
+    status: number
+    server_time: string
+    want_more: boolean
+    success: boolean
+}
+
+interface RemoveAuthenticatorViaChallengeContinueResponse{
+    success: boolean
+    replacement_token: SteamGuard
+}
+
+interface QueryStatusResponse{
+    state: number
+    inactivation_reason: number
+    authenticator_type: number
+    authenticator_allowed: boolean
+    steamguard_scheme: number
+    token_gid: string
+    email_validated: boolean
+    device_identifier: string
+    time_created: string
+    revocation_attempts_remaining: number
+    classified_agent: string
+    allow_external_authenticator: boolean
+    time_transferred: string
+    version: number
+}
+
+interface ConfirmationsResponse{
+    success: boolean
+    conf: Confirmation[]
+}
+
+interface Confirmation {
+    type: number // 1-其他,2-交易,3-市场
+    type_name: string
+    id: string
+    creator_id: string // 如果type=2,则 create_id=tradeOfferId
+    nonce: string
+    creation_time: string
+    cancel: string
+    accept: string
+    icon: string
+    multi: boolean
+    headline: string
+    summary: string[]
+    warn: any
+}
+
+interface ConfirmationOptions{
+    identitySecret: string,
+    deviceid: string,
+    steamid: string,
+    cookies: string
+}
+
+interface ConfirmationAjaxOpResponse{
+    success: boolean
+    message: string
+}
+
+interface SendOfferOptions{
+    serverid: string
+    partner: string,
+    tradeoffermessage: string
 }

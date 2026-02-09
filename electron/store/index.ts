@@ -19,7 +19,8 @@ class GlobalStore {
         auto_confirm_market_transactions: false,
         auto_confirm_trades: false,
         maFilesDir: path.join(app.getPath('userData'), 'maFiles'),
-        entries: []
+        entries: [],
+        timeout: 30000,
     };
 
     // 默认 Runtime (每次启动都是新的)

@@ -5,6 +5,14 @@ import {
 } from 'steam-session';
 import globalStore from "../store";
 import {ConstructorOptions} from "steam-session/dist/interfaces-external";
+import {
+    DEFAULT_APP_VERSION,
+    DEFAULT_LANGUAGE,
+    DEFAULT_TIME_ZONE_OFFSET,
+    MOBILE_CLIENT_VERSION_NAME, STEAM_ID_NAME,
+    STEAM_LANGUAGE_NAME, TIME_ZONE_OFFSET_NAME
+} from "./constants.ts";
+import {parseToken} from "./index.ts";
 
 class SteamLoginExecutor {
     // 使用 Map 管理所有正在进行或已登录的会话
@@ -188,6 +196,10 @@ class SteamLoginExecutor {
     private async _handleLoginSuccess(session: LoginSession, accountName: string) {
         try {
             const cookies = await session.getWebCookies();
+            cookies.push(`${STEAM_LANGUAGE_NAME}=${DEFAULT_LANGUAGE}`)
+            cookies.push(`${MOBILE_CLIENT_VERSION_NAME}=${DEFAULT_APP_VERSION}`)
+            cookies.push(`${TIME_ZONE_OFFSET_NAME}=${DEFAULT_TIME_ZONE_OFFSET}`)
+            cookies.push(`${STEAM_ID_NAME}=${session.steamID.getSteamID64()}`)
             this._sendLoginMessage({
                 account_name: accountName,
                 result: EResult.OK,
@@ -197,7 +209,9 @@ class SteamLoginExecutor {
                     refresh_token: session.refreshToken,
                     account_name: session.accountName,
                     steamid: session.steamID.getSteamID64(),
-                    cookies: cookies
+                    cookies: cookies,
+                    at: parseToken(session.accessToken).payload.exp,
+                    rt: parseToken(session.refreshToken).payload.exp
                 }
             });
 

@@ -13,10 +13,10 @@
     "element-plus": "^2.13.2",
     "got": "^14.6.6",
     "hpagent": "^1.2.0",
+    "js-base64": "^3.7.8",
     "socks-proxy-agent": "^8.0.5",
     "steam-session": "^1.9.4",
     "steam-totp": "^2.1.2",
-    "steamcommunity": "^3.49.0",
     "vue": "^3.4.21"
   },
   "devDependencies": {
