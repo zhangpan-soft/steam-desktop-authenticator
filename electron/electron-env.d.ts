@@ -21,13 +21,26 @@ declare namespace NodeJS {
     }
 }
 
-type ElectronMessageChannel = 'showOpenDialog' | 'readFile' | 'readMaFile' | 'saveMaFile' | 'store:get-initial'
-    | 'store:renderer-update' | 'store:main-update' | 'main-process-message' | 'importMaFile' | 'open-window'
+type ElectronMessageChannel =
+    'showOpenDialog'
+    | 'readFile'
+    | 'readMaFile'
+    | 'saveMaFile'
+    | 'store:get-initial'
+    | 'store:renderer-update'
+    | 'store:main-update'
+    | 'main-process-message'
+    | 'importMaFile'
+    | 'open-window'
+    | 'close-window'
     | SteamMessageChannel
 
-type SteamMessageChannel = 'steam:login'
-    | 'steam:submitSteamGuard' | 'steam:cancelLogin' | 'steam:message:login-status-changed'
-| 'steam:getConfirmations'
+type SteamMessageChannel =
+    'steam:login'
+    | 'steam:submitSteamGuard'
+    | 'steam:cancelLogin'
+    | 'steam:message:login-status-changed'
+    | 'steam:getConfirmations'
 
 type WindowHashType = '/' | '/confirmations' | '/steamLogin'
 
@@ -35,6 +48,8 @@ type WindowUri = {
     hash: WindowHashType
     query?: Record<string, string>
 }
+
+type SteamLoginType = 'NewAccount' | 'ImportSda' | 'RefreshToken' | 'ReLogin'
 
 // Used in Renderer process, expose in `preload.ts`
 interface Window {
@@ -182,14 +197,14 @@ interface RuntimeContext {
     timeOffset: number
     timeNextSyncTime: number
     loginSession?: any,
-    currentAccount?: EntryType & {info?: SteamAccount}
+    currentAccount?: EntryType & { info?: SteamAccount }
 }
 
-interface SteamAccount extends SteamGuard{
-    Session?:SteamSession
+interface SteamAccount extends SteamGuard {
+    Session?: SteamSession
 }
 
-interface SteamSession{
+interface SteamSession {
     access_token: string
     refresh_token: string
     SteamID: string

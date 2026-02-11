@@ -11,12 +11,12 @@ const router = createRouter({
     {
       path: '/confirmations',
       name: 'confirmations',
-      component: import('../views/Confirmations.vue'),
+      component: import('../views/steam/Confirmations.vue'),
     },
     {
       path: '/steamLogin',
       name: 'steamLogin',
-      component: import('../views/steam-login.vue')
+      component: import('../views/steam/SteamLogin.vue')
     }
   ]
 })

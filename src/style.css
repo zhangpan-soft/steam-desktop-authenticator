@@ -6,35 +6,39 @@
 
 .el-header {
     --el-header-padding: 0px;
-    --el-header-height: 35px;
+    --el-header-height: auto;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    border-bottom: 1px solid #dcdfe6;
 }
 
 .el-main {
-    --el-main-padding: 0px;
+    --el-main-padding: 0px; /* 移除内边距 */
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
 }
 
 .el-footer {
     --el-footer-padding: 0px;
-    --el-footer-height: 30px;
+    --el-footer-height: auto;
+    flex-shrink: 0;
+    border-top: 1px solid #dcdfe6;
 }
 
 .el-card {
-    --el-card-padding: 5px;
-    margin-top: 5px;
-    margin-right: 5px;
-    margin-left: 5px;
+    --el-card-padding: 0px;
+    --el-card-border-radius: 0;
+    width: 100%;
 }
 
 /* New Layout Styles */
 .container {
     height: 100%;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-
-.el-main {
-    flex: 1;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -47,4 +51,49 @@
     justify-content: center;
     border: none;
     box-shadow: none;
+}
+.el-splitter-panel{
+    flex-basis: auto !important;
+}
+
+/* 通用区域样式 - 用于固定高度的内容块 */
+.section {
+    flex-shrink: 0;
+    padding: 0;
+}
+
+/* 通用分割线样式 - 紧凑无间距 */
+.custom-divider {
+    margin: 0;
+}
+
+/* 通用列表区域 - 占据剩余高度 */
+.list-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+}
+
+/* 通用列表容器 - 处理滚动 */
+.list-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0;
+}
+
+/* 通用列表卡片项 - 紧凑排列 */
+.list-item-card {
+    margin-bottom: 0;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    border-top: none; /* 只保留底部边框 */
+    cursor: pointer;
+}
+
+/* 最后一个列表项移除底部边框 */
+.list-item-card:last-child {
+    border-bottom: none;
 }

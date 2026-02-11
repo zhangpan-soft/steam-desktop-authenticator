@@ -28,9 +28,17 @@ ipcMainHandler
         console.log('saveMaFile', args, event)
         return saveMaFile(args.content, args.passkey)
     })
-    .on('open-window', (event, args) => {
+    .handle('open-window', (event, args) => {
         console.log('open-window', args, event)
-        const uri = args.uri
-        const options = args.options
+        const {uri,options} = {...args}
+        if (!options.parent){
+            options.parent = windowManager.getWindow('/')
+        } else {
+            options.parent = windowManager.getWindow(options.parent)
+        }
         windowManager.addChild(uri, options)
+    })
+    .handle('close-window',(event, args)=>{
+        console.log('close-window', args, event)
+        windowManager.close(args.hash)
     })

@@ -35,6 +35,9 @@ ipcMainHandler
     })
     .handle('steam:cancelLogin', (event, args) => {
         console.log('steamCancelLogin', args, event)
+        if (!args.account_name){
+            return
+        }
         return steamLoginExecutor.cancelLogin(args.account_name)
     })
     .handle('importMaFile', async (event, args) => {

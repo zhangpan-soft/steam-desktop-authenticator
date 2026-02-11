@@ -28,6 +28,8 @@ export const RENDERER_DIST = path.join(process.env.APP_ROOT, 'dist')
 
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 'public') : RENDERER_DIST
 
+console.log('11111', VITE_DEV_SERVER_URL)
+
 // 优化定时器逻辑：防止并发执行
 let isTokenUpdating = false;
 
@@ -150,6 +152,8 @@ class WindowManager {
             win = this._child.get(uri.hash)
         }
 
+        console.log('222222222', finalHash, win)
+
         if (!win) {
             throw new Error('Window not found')
         }
@@ -164,7 +168,7 @@ class WindowManager {
         }
     }
 
-    public addChild(uri: WindowUri, options: BrowserWindowConstructorOptions, parentHash?: WindowHashType) {
+    public addChild(uri: WindowUri, options: BrowserWindowConstructorOptions) {
 
         console.log('addWindow', uri, options)
 
@@ -187,7 +191,6 @@ class WindowManager {
 
         const win = this._createWindow(options)
         this._child.set(uri.hash, win)
-        win.setParentWindow(parentHash ? this._child.get(parentHash) || this._main : this._main)
         this._load(uri)
 
         win.on('closed', () => {
@@ -236,6 +239,14 @@ class WindowManager {
         } else if (this._child.has(hash)) {
             this._child.get(hash)?.close()
             this._child.delete(hash)
+        }
+    }
+
+    public getWindow(hash: WindowHashType) {
+        if (hash === '/') {
+            return this._main
+        } else if (this._child.has(hash)) {
+            return this._child.get(hash)
         }
     }
 }

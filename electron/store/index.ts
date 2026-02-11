@@ -100,10 +100,6 @@ class GlobalStore {
     public getState() {
         return {...this.state}
     }
-
-    public sendMessage(channel: ElectronMessageChannel, ...args: any[]){
-        windowManager.sendEvent('/', channel, ...args)
-    }
 }
 
 const globalStore = new GlobalStore(path.join(app.getPath('userData'),'settings.json'))

@@ -1,99 +1,19 @@
 <script setup lang="ts">
-import {onMounted, reactive, ref} from 'vue'
-import {Hide, Lock, Unlock, UserFilled, View} from "@element-plus/icons-vue";
-import {ElMessage, FormInstance, FormItemRule, FormRules} from "element-plus";
+import {onMounted, reactive} from 'vue'
+import {ElMessage} from "element-plus";
 
 const runtimeContext = window.state.runtimeContext
 const settings = window.state.settings
-const loginFormRef = ref<FormInstance>()
 
 type CurrentDataType = {
   showImportAccountModal: boolean
   importAccountForm: {
     passkey: string
   },
-  showLoginModal: boolean,
   filterText: string,
   showSdaPasskeyModal: boolean,
   showInitModal: boolean,
-  loginForm: LoginFormType,
   showSettingsModal: boolean,
-  currentMaFileContent: string
-  currentConfirmations: Confirmation[]
-}
-
-type LoginFormType = {
-  account_name: string,
-  password: string
-  steamGuardCode: string
-  showSteamGuardCode: boolean
-  showAccountName: boolean,
-  showPassword: boolean,
-  accountPasswordLoginCancelLoading: boolean
-  accountPasswordLoginConfirmLoading: boolean
-  steamGuardCodeCancelLoading: boolean
-  steamGuardCodeConfirmLoading: boolean
-  loginType: 'NewAccount' | 'ImportSda' | 'RefreshToken' | 'ReLogin',
-  passwordLocked: boolean,
-  passwordInputType: 'password' | 'text',
-  rules: FormRules,
-  steamGuardCodeText: string,
-}
-
-const defaultAccountNameRules: FormItemRule[] = [
-  {
-    required: true,
-    message: 'Please input your account name',
-    trigger: 'blur'
-  }
-]
-
-const defaultPasswordRules: FormItemRule[] = [
-  {
-    required: true,
-    message: 'Please input your password',
-    trigger: 'blur'
-  }
-]
-
-const defaultSteamGuardCodeRules: FormItemRule[] = [
-  {
-    required: true,
-    message: 'Please input your Steam Guard Code',
-    trigger: 'blur'
-  },
-  {
-    validator: (rule, value, callback) => {
-      console.log(rule)
-      if (value.length !== 5) {
-        callback(new Error('Steam Guard Code must be 5 digits'))
-      } else {
-        callback()
-      }
-    }
-  }
-]
-
-const defaultLoginForm: LoginFormType = {
-  account_name: '',
-  password: '',
-  steamGuardCode: '',
-  showSteamGuardCode: false,
-  showAccountName: true,
-  showPassword: true,
-  accountPasswordLoginCancelLoading: false,
-  accountPasswordLoginConfirmLoading: false,
-  steamGuardCodeCancelLoading: false,
-  steamGuardCodeConfirmLoading: false,
-  loginType: 'NewAccount',
-  passwordLocked: true,
-  passwordInputType: 'password',
-  rules: {
-    account_name: [...defaultAccountNameRules],
-    password: [...defaultPasswordRules],
-    steamGuardCode: [...defaultSteamGuardCodeRules]
-  },
-  steamGuardCodeText: ''
 }
 
 const currentData = reactive<CurrentDataType>({
@@ -102,26 +22,10 @@ const currentData = reactive<CurrentDataType>({
   importAccountForm: {
     passkey: ''
   },
-  showLoginModal: false,
   filterText: '',
   showSdaPasskeyModal: false,
   showInitModal: false,
-  loginForm: {...defaultLoginForm},
-  currentMaFileContent: '',
-  currentConfirmations: []
 })
-
-type SteamLoginOptions = {
-  account_name: string,
-  password?: string,
-  steamGuardCode?: string,
-  refresh_token?: string,
-  shared_secret?: string
-}
-
-function steamLogin(options: SteamLoginOptions) {
-  return window.ipcRenderer.invoke('steam:login', options)
-}
 
 
 function handleExit() {
@@ -133,7 +37,7 @@ function handleViewConfirmations() {
     ElMessage.warning('Please select an account first')
     return
   }
-  window.ipcRenderer.send('open-window',{
+  window.ipcRenderer.send('open-window', {
     uri: {
       hash: '/confirmations'
     },
@@ -148,8 +52,8 @@ function handleViewConfirmations() {
       minimizable: false,
       show: false,
       icon: 'electron-vite.svg',
-      x: screen.width/2+210,
-      y: screen.height/2-400,
+      x: screen.width / 2 + 210,
+      y: screen.height / 2 - 400,
       title: 'Confirmations'
     }
   })
@@ -173,7 +77,6 @@ function selectAccount(acc: EntryType) {
 }
 
 function handleImportAccountConfirm() {
-  currentData.loginForm.loginType = 'ImportSda'
   window.ipcRenderer.invoke('showOpenDialog', {
     title: 'Select .maFile',
     defaultPath: settings.maFilesDir,
@@ -191,9 +94,27 @@ function handleImportAccountConfirm() {
       path: result.filePaths[0],
       passkey: currentData.importAccountForm.passkey
     }).then(result => {
-      currentData.showLoginModal = true
-      currentData.loginForm.account_name = result.account_name
-      currentData.currentMaFileContent = result.maFileContent
+      // todo
+      const {data} = {...result}
+      delete data.Session
+      window.ipcRenderer.invoke('open-window',{
+        uri: {
+          hash: '/steamLogin',
+          query: {
+            loginType: 'ImportSda',
+            ...data
+          }
+        },
+        options: {
+          width: 420,
+          height: 300,
+          resizable: false,
+          title: 'Steam Login',
+          modal: true,
+          show: false,
+          icon: 'electron-vite.svg',
+        }
+      })
     }).catch(err => {
       ElMessage.error(err.message)
     })
@@ -220,200 +141,79 @@ function initialSelect(type: number) {
   })
 }
 
-function handleAccountPasswordLoginCancel() {
-  currentData.showLoginModal = false
-  currentData.loginForm.accountPasswordLoginConfirmLoading = true
-  window.ipcRenderer.invoke('steam:cancelLogin',).then(() => {
-    currentData.loginForm.accountPasswordLoginConfirmLoading = false
-  })
-}
-
-function handleAccountPasswordLoginConfirm(formEl: FormInstance | undefined) {
-  if (!formEl) {
-    return
-  }
-  currentData.loginForm.accountPasswordLoginConfirmLoading = true
-  currentData.loginForm.rules['steamGuardCode'] = []
-  console.log('currentData', currentData)
-  formEl.validate((valid: boolean) => {
-    if (!valid) {
-      currentData.loginForm.accountPasswordLoginConfirmLoading = false
-      return
-    }
-    steamLogin({
-      account_name: currentData.loginForm.account_name,
-      password: currentData.loginForm.password,
-      shared_secret: JSON.parse(currentData.currentMaFileContent).shared_secret
-    }).then()
-  })
-}
-
-function handleSteamGuardCodeCancel() {
-  window.ipcRenderer.invoke('steam:cancelLogin',).then()
-}
-
-function handleSteamGuardCodeConfirm() {
-  window.ipcRenderer.invoke('steam:submitSteamGuard').catch(err => {
-    ElMessage.error(err.message)
-  })
-}
 
 function handleSetupNewAccount() {
-  currentData.showLoginModal = true
-  currentData.loginForm = {...defaultLoginForm}
-  currentData.loginForm.rules['steamGuardCode'] = []
+  window.ipcRenderer.invoke('open-window', {
+    uri: {
+      hash: '/steamLogin',
+      query: {
+        loginType: 'NewAccount'
+      }
+    },
+    options: {
+      width: 420,
+      height: 300,
+      resizable: false,
+      title: 'Steam Login',
+      modal: true,
+      show: false,
+      icon: 'electron-vite.svg',
+    }
+  })
 }
-
-function handleSteamLoginSuccess(event: SteamLoginEvent) {
-  const resetSession = (data: any) => {
-    const fData: SteamAccount = {...data}
-    fData.Session = event.data
-    return window.ipcRenderer.invoke('saveMaFile', {
-      content: JSON.stringify(fData),
-      passkey: runtimeContext.passkey
-    })
-  }
-
-  switch (currentData.loginForm.loginType) {
-    case 'NewAccount': {
-
-      break
-    }
-    case 'RefreshToken': {
-      const _ = settings.entries.find(item => item.steamid === event.data?.SteamID)
-      window.ipcRenderer.invoke('readMaFile', {
-        filename: _?.filename,
-        passkey: runtimeContext.passkey,
-        iv: _?.encryption_iv,
-        salt: _?.encryption_salt
-      }).then(result => {
-        const {data} = {...result}
-        resetSession(data).then()
-      })
-      break
-    }
-    case 'ImportSda': {
-      const data = JSON.parse(currentData.currentMaFileContent)
-      resetSession(data).then(() => {
-        ElMessage.success('Import Success')
-      }).catch((err) => {
-        ElMessage.error(err.message)
-      }).finally(() => {
-        currentData.showImportAccountModal = false
-        currentData.currentMaFileContent = ''
-      })
-      break
-    }
-    case 'ReLogin': {
-      const _ = settings.entries.find(item => item.steamid === event.data?.SteamID)
-      window.ipcRenderer.invoke('readMaFile', {
-        filename: _?.filename,
-        passkey: runtimeContext.passkey,
-        iv: _?.encryption_iv,
-        salt: _?.encryption_salt
-      }).then(result => {
-        const {data} = {...result}
-        resetSession(data).then(() => {
-          currentData.showLoginModal = false
-          ElMessage.success('Login Success')
-        })
-      })
-      break
-    }
-  }
-}
-
 
 onMounted(() => {
   currentData.showInitModal = settings.first_run
 })
 
-window.ipcRenderer.on('steam:message:login-status-changed', (event, args: SteamLoginEvent) => {
-  console.log('----------------------')
-  console.log(event, args)
-  if (currentData.loginForm.account_name !== args.account_name) {
-    window.ipcRenderer.invoke('steam:cancelLogin', {account_name: currentData.loginForm.account_name}).then()
-    return
-  }
-  if (args.status === 'LoginSuccess') {
-    ElMessage.success('Login Success')
-    currentData.showLoginModal = false
-    handleSteamLoginSuccess(args)
-  } else if (args.status === 'Timeout') {
-    ElMessage.error('Login Timeout, Please Re-Try Later')
-    window.ipcRenderer.invoke('steam:cancelLogin', {account_name: currentData.loginForm.account_name}).then()
-  } else if (args.status === 'Need2FA') {
-    currentData.loginForm.showSteamGuardCode = true
-    currentData.loginForm.showAccountName = false
-    currentData.loginForm.showPassword = false
-    currentData.loginForm.rules['steamGuardCode'] = [...defaultSteamGuardCodeRules]
-    if (args.valid_actions) {
-      if (args.valid_actions.find(value => value.type === 3 || value.type === 4)) {
-        currentData.loginForm.steamGuardCodeText = 'Please Input SteamGuard Code Or Confirm In Your SteamGuard App'
-      } else if (args.valid_actions.find(value => value.type === 2 || value.type === 5)) {
-        currentData.loginForm.steamGuardCodeText = 'Please Input SteamGuard Code Or Confirm In Your Email'
-      } else {
-        currentData.loginForm.steamGuardCodeText = 'Please Input SteamGuard Code Or Confirm In Your Machine'
-      }
-    }
-  } else if (args.result) {
-    ElMessage.error(`Login Failed, Please Re-Try Later.${args.result}`)
-    window.ipcRenderer.invoke('steam:cancelLogin', {account_name: currentData.loginForm.account_name}).then()
-  } else if (args.error_message) {
-    ElMessage.error(`Login Failed, ${args.error_message}.`)
-    window.ipcRenderer.invoke('steam:cancelLogin', {account_name: currentData.loginForm.account_name}).then()
-  } else {
-    ElMessage.error(`Login Failed, Please Re-Try Later.`)
-    window.ipcRenderer.invoke('steam:cancelLogin', {account_name: currentData.loginForm.account_name}).then()
-  }
-})
 </script>
 
 <template>
   <div class="container">
     <!--  顶部菜单  -->
     <el-header>
-      <el-card>
-        <el-dropdown trigger="click" size="small">
-          <span class="menu-item-text">File</span>
-          <template #dropdown>
-            <el-dropdown-menu>
-              <el-dropdown-item
-                  @click="currentData.showImportAccountModal=true;currentData.importAccountForm.passkey=''">
-                Import Account
-              </el-dropdown-item>
-              <el-dropdown-item @click="currentData.showSettingsModal=true">Settings</el-dropdown-item>
-              <el-dropdown-item divided @click="handleExit">Exit</el-dropdown-item>
-            </el-dropdown-menu>
-          </template>
-        </el-dropdown>
+      <el-dropdown trigger="click" size="small">
+        <span class="menu-item-text">File</span>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item
+                @click="currentData.showImportAccountModal=true;currentData.importAccountForm.passkey=''">
+              Import Account
+            </el-dropdown-item>
+            <el-dropdown-item @click="currentData.showSettingsModal=true">Settings</el-dropdown-item>
+            <el-dropdown-item divided @click="handleExit">Exit</el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
 
-        <el-dropdown trigger="click" size="small">
-          <span class="menu-item-text">Selected Account</span>
-          <template #dropdown>
-            <el-dropdown-menu>
-              <el-dropdown-item>Login again</el-dropdown-item>
-              <el-dropdown-item>Force refresh</el-dropdown-item>
-              <el-dropdown-item divided>Remove</el-dropdown-item>
-            </el-dropdown-menu>
-          </template>
-        </el-dropdown>
-      </el-card>
+      <el-dropdown trigger="click" size="small">
+        <span class="menu-item-text">Selected Account</span>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item>Login again</el-dropdown-item>
+            <el-dropdown-item>Force refresh</el-dropdown-item>
+            <el-dropdown-item divided>Remove</el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
     </el-header>
     <el-main>
-
-      <el-card>
-        <el-button-group class="full-width-group">
-          <el-button plain @click="handleSetupNewAccount" size="small">Setup New Account</el-button>
-          <el-button plain size="small">Setup Encryption</el-button>
+      <!-- 区域 1: 按钮组 -->
+      <div class="section">
+        <el-button-group size="small" class="full-width-group">
+          <el-button @click="handleSetupNewAccount" size="small">Setup New Account</el-button>
+          <el-button size="small">Setup Encryption</el-button>
         </el-button-group>
-      </el-card>
-      <el-card>
+      </div>
+      <el-divider class="custom-divider"/>
+
+      <!-- 区域 2: Token -->
+      <div class="section">
         <el-input
             v-model="runtimeContext.token"
             readonly
             class="token-input"
-            size="large"
+            size="small"
         >
           <template #suffix>
             <el-button type="primary" link @click="copyToken">Copy</el-button>
@@ -424,34 +224,43 @@ window.ipcRenderer.on('steam:message:login-status-changed', (event, args: SteamL
                      :indeterminate="false"
                      :status="runtimeContext.progress>50? 'success': runtimeContext.progress>30?'warning':'exception'"
                      :text-inside="true"/>
-      </el-card>
-      <el-card>
-        <el-button type="default" plain class="full-width-btn" @click="handleViewConfirmations">
+      </div>
+      <el-divider class="custom-divider"/>
+
+      <!-- 区域 3: View Confirmations -->
+      <div class="section">
+        <el-button type="default" size="small" class="full-width-btn" @click="handleViewConfirmations">
           View Confirmations
         </el-button>
-      </el-card>
-      <el-card class="account-list-card">
-        <div class="account-list-content">
-          <el-empty class="el-empty" v-if="settings.entries.length===0" description="No accounts loaded"/>
-          <el-card v-else
-                   v-for="acc in settings.entries"
-                   :key="acc.steamid"
-                   @click="selectAccount(acc)">
+      </div>
+      <el-divider class="custom-divider"/>
+
+      <!-- 区域 4: 账号列表 (自适应高度) -->
+      <div class="list-section">
+        <el-empty class="el-empty" v-if="settings.entries.length===0" description="No accounts loaded"/>
+        <div v-else class="list-container">
+          <el-card
+              v-for="acc in settings.entries"
+              :key="acc.steamid"
+              @click="selectAccount(acc)"
+              class="list-item-card"
+          >
             <el-row>
-              <el-text :type="runtimeContext.currentAccount?.steamid === acc.steamid?'primary':'default'">
+              <el-text size="small" :type="runtimeContext.currentAccount?.steamid === acc.steamid?'primary':'default'">
                 {{ acc.account_name + '\t\t' + acc.steamid }}
               </el-text>
             </el-row>
           </el-card>
         </div>
-        <template #footer>
-          <el-row>
-            <el-input v-model="currentData.filterText" size="small">
-              <template #prefix>Filter:</template>
-            </el-input>
-          </el-row>
-        </template>
-      </el-card>
+      </div>
+      <el-divider class="custom-divider"/>
+
+      <!-- 区域 5: 底部过滤器 -->
+      <div class="section">
+        <el-input v-model="currentData.filterText" size="small">
+          <template #prefix>Filter:</template>
+        </el-input>
+      </div>
     </el-main>
     <el-footer>
       <el-row justify="space-between" align="middle" style="height: 100%; padding: 0 5px;">
@@ -521,75 +330,6 @@ window.ipcRenderer.on('steam:message:login-status-changed', (event, args: SteamL
     <el-row>
       <el-button type="default" style="width: 100%" @click="initialSelect(2)">Custom</el-button>
     </el-row>
-  </el-dialog>
-
-  <el-dialog
-      v-model="currentData.showLoginModal"
-      title="Steam Login"
-      width="340px"
-      :close-on-click-modal="false"
-      :close-on-press-escape="false"
-      :show-close="false"
-      center
-      align-center
-      append-to-body>
-    <el-form :model="currentData.loginForm" label-width="auto" label-position="top" ref="loginFormRef"
-             :rules="currentData.loginForm.rules">
-      <el-form-item prop="account_name" label="Account" v-if="currentData.loginForm.showAccountName">
-        <el-input v-model="currentData.loginForm.account_name"
-                  :readonly="currentData.loginForm.loginType==='ImportSda'">
-          <template #prefix>
-            <el-icon>
-              <UserFilled/>
-            </el-icon>
-          </template>
-        </el-input>
-      </el-form-item>
-      <el-form-item prop="password" label="Password" v-if="currentData.loginForm.showPassword">
-        <el-input v-model="currentData.loginForm.password" :type="currentData.loginForm.passwordInputType">
-          <template #prefix>
-            <el-icon v-if="currentData.loginForm.passwordLocked">
-              <Lock/>
-            </el-icon>
-            <el-icon v-if="!currentData.loginForm.passwordLocked">
-              <Unlock/>
-            </el-icon>
-          </template>
-          <template #suffix>
-            <el-icon v-if="currentData.loginForm.passwordLocked"
-                     @click="currentData.loginForm.passwordInputType='text';currentData.loginForm.passwordLocked=false">
-              <Hide/>
-            </el-icon>
-            <el-icon v-if="!currentData.loginForm.passwordLocked"
-                     @click="currentData.loginForm.passwordInputType='password';currentData.loginForm.passwordLocked=true">
-              <View/>
-            </el-icon>
-          </template>
-        </el-input>
-      </el-form-item>
-      <el-form-item prop="steamGuardCode" label="Steam Guard" v-if="currentData.loginForm.showSteamGuardCode">
-        <el-text size="small">
-          {{ currentData.loginForm.steamGuardCodeText }}
-        </el-text>
-        <el-input v-model="currentData.loginForm.steamGuardCode"/>
-      </el-form-item>
-      <el-form-item v-if="currentData.loginForm.showPassword && currentData.loginForm.showAccountName">
-        <el-button type="default" :loading="currentData.loginForm.accountPasswordLoginCancelLoading"
-                   @click="handleAccountPasswordLoginCancel">Cancel
-        </el-button>
-        <el-button type="default" :loading="currentData.loginForm.accountPasswordLoginConfirmLoading"
-                   @click="handleAccountPasswordLoginConfirm(loginFormRef)">Confirm
-        </el-button>
-      </el-form-item>
-      <el-form-item v-if="currentData.loginForm.showSteamGuardCode">
-        <el-button type="default" :loading="currentData.loginForm.steamGuardCodeCancelLoading"
-                   @click="handleSteamGuardCodeCancel">Cancel
-        </el-button>
-        <el-button type="default" :loading="currentData.loginForm.steamGuardCodeConfirmLoading"
-                   @click="handleSteamGuardCodeConfirm">Confirm
-        </el-button>
-      </el-form-item>
-    </el-form>
   </el-dialog>
 
   <el-dialog
@@ -738,25 +478,18 @@ window.ipcRenderer.on('steam:message:login-status-changed', (event, args: SteamL
   border-radius: 4px;
 }
 
-.account-list-card {
-  flex: 1;
+/* 布局样式 */
+.container {
   display: flex;
   flex-direction: column;
+  height: 100vh;
   overflow: hidden;
-  min-height: 0;
 }
 
-.account-list-card :deep(.el-card__body) {
-  flex: 1;
-  overflow: hidden; /* 关键：防止 body 自身滚动，交给内部容器 */
+.el-empty {
+  height: 100%;
   display: flex;
-  flex-direction: column;
-  padding: 5px;
-}
-
-.account-list-content {
-  flex: 1;
-  overflow-y: auto; /* 关键：内容过多时出现滚动条 */
-  min-height: 0;
+  justify-content: center;
+  align-items: center;
 }
 </style>
