@@ -17,7 +17,8 @@
     "socks-proxy-agent": "^8.0.5",
     "steam-session": "^1.9.4",
     "steam-totp": "^2.1.2",
-    "vue": "^3.4.21"
+    "vue": "^3.4.21",
+    "vue-router": "^4.6.4"
   },
   "devDependencies": {
     "@types/steam-totp": "^2.1.2",

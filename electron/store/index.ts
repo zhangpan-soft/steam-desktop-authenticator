@@ -1,13 +1,14 @@
 // electron/GlobalStore.ts
-import {ipcMain, BrowserWindow, app} from 'electron';
+import { app} from 'electron';
 import fs from 'fs';
 import path from 'path';
+import ipcMainHandler from "../ipc";
+import windowManager from "../window-manager.ts";
 
 class GlobalStore {
     // 内存中持有完整的状态
     private state: GlobalState;
     private filePath: string;
-    private window: BrowserWindow | null = null;
 
     // 默认 Settings
     private defaultSettings: Settings = {
@@ -44,10 +45,6 @@ class GlobalStore {
         this.initIpc();
     }
 
-    public setWindow(win: BrowserWindow) {
-        this.window = win;
-    }
-
     // 只读取 settings
     private loadSettingsFromDisk(): Settings {
         if (fs.existsSync(this.filePath)) {
@@ -69,10 +66,10 @@ class GlobalStore {
 
     private initIpc() {
         // 渲染进程获取完整初始状态
-        ipcMain.handle('store:get-initial', () => this.state);
+        ipcMainHandler.handle('store:get-initial', () => this.state);
 
         // 接收渲染进程的更新
-        ipcMain.on('store:renderer-update', (event, scope: UpdateScope, keyPath: string, value: any) => {
+        ipcMainHandler.on('store:renderer-update', (event, scope: UpdateScope, keyPath: string, value: any) => {
             // keyPath 可能是 "encrypted" 也可能是 "entries"
             this.updateState(scope, keyPath, value, false);
         });
@@ -95,8 +92,8 @@ class GlobalStore {
             (this.state.runtimeContext as any)[key] = value;
         }
         // 3. 通知渲染进程
-        if (emitToRenderer && this.window) {
-            this.window.webContents.send('store:main-update', scope, key, value);
+        if (emitToRenderer) {
+            windowManager.sendEvent('/', 'store:main-update', scope, key, value)
         }
     }
 
@@ -104,8 +101,8 @@ class GlobalStore {
         return {...this.state}
     }
 
-    public sendMessage(channel: string, ...args: any[]){
-        this.window?.webContents.send(channel, args)
+    public sendMessage(channel: ElectronMessageChannel, ...args: any[]){
+        windowManager.sendEvent('/', channel, ...args)
     }
 }
 

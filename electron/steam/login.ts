@@ -13,6 +13,7 @@ import {
     STEAM_LANGUAGE_NAME, TIME_ZONE_OFFSET_NAME
 } from "./constants.ts";
 import {parseToken} from "./index.ts";
+import windowManager from "../window-manager.ts";
 
 class SteamLoginExecutor {
     // 使用 Map 管理所有正在进行或已登录的会话
@@ -248,7 +249,7 @@ class SteamLoginExecutor {
     private _sendLoginMessage(payload: SteamLoginEvent) {
         // 统一通过 IPC 发送给渲染进程
         // 渲染进程通过 payload.account_name 来判断更新 UI 上的哪个卡片
-        globalStore.sendMessage('steam:message:login-status-changed', payload);
+        windowManager.sendEvent('/', 'steam:message:login-status-changed', payload)
     }
 }
 

@@ -22,12 +22,19 @@ declare namespace NodeJS {
 }
 
 type ElectronMessageChannel = 'showOpenDialog' | 'readFile' | 'readMaFile' | 'saveMaFile' | 'store:get-initial'
-    | 'store:renderer-update' | 'store:main-update' | 'main-process-message' | 'importMaFile'
+    | 'store:renderer-update' | 'store:main-update' | 'main-process-message' | 'importMaFile' | 'open-window'
     | SteamMessageChannel
 
 type SteamMessageChannel = 'steam:login'
     | 'steam:submitSteamGuard' | 'steam:cancelLogin' | 'steam:message:login-status-changed'
 | 'steam:getConfirmations'
+
+type WindowHashType = '/' | '/confirmations' | '/steamLogin'
+
+type WindowUri = {
+    hash: WindowHashType
+    query?: Record<string, string>
+}
 
 // Used in Renderer process, expose in `preload.ts`
 interface Window {
