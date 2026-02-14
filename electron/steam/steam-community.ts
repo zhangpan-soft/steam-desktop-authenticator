@@ -1,35 +1,35 @@
 import * as SteamTotp from 'steam-totp'
-import globalStore from "../store";
 import {QueryTime} from "./two-factor.ts";
 import {DEFAULT_USER_AGENT} from "./constants.ts";
 import {GotHttpApiRequest} from "../utils/requests.ts";
 import {COMMUNITY_ENDPOINTS, STEAM_COMMUNITY_BASE} from "./endpoints.ts";
 import {parseErrorResult, parseSteamCommunityResult} from "./index.ts";
+import runtimeContext from "../utils/runtime-context.ts";
+import {getSettingsDb} from "../db";
 
 /**
  * 生成2fa
  * @param shard_secret 秘钥
  */
 export async function generateAuthCode(shard_secret: string) {
-    const state = globalStore.getState()
-    if (Date.now() > state.runtimeContext.timeNextSyncTime) {
+    if (Date.now() > runtimeContext.timeNextSyncTime) {
         await QueryTime()
     }
     // SteamTotp 需要的 offset 是 (ServerTime - LocalTime)
-    return SteamTotp.generateAuthCode(shard_secret, state.runtimeContext.timeOffset)
+    return SteamTotp.generateAuthCode(shard_secret, runtimeContext.timeOffset)
 }
 
 export async function getTime(shard_secret?: string) {
     try {
         if (!shard_secret) {
-            return SteamTotp.time(globalStore.getState().runtimeContext.timeOffset)
+            return SteamTotp.time(runtimeContext.timeOffset)
         }
-        if (Date.now() > globalStore.getState().runtimeContext.timeNextSyncTime) {
+        if (Date.now() > runtimeContext.timeNextSyncTime) {
             await QueryTime()
         }
-        return SteamTotp.time(globalStore.getState().runtimeContext.timeOffset)
+        return SteamTotp.time(runtimeContext.timeOffset)
     } catch (e) {
-        return SteamTotp.time(globalStore.getState().runtimeContext.timeOffset)
+        return SteamTotp.time(runtimeContext.timeOffset)
     }
 
 }
@@ -45,12 +45,13 @@ export async function getConfirmations(options: ConfirmationOptions) {
         p: options.deviceid,
         a: options.steamid
     })
+    const settingsDb = await getSettingsDb()
     return GotHttpApiRequest.get(COMMUNITY_ENDPOINTS.confirmations)
         .params(params)
         .userAgent(DEFAULT_USER_AGENT)
         .requestConfig({
-            timeout: globalStore.getState().settings.timeout,
-            proxies: globalStore.getState().settings.proxy
+            timeout: settingsDb.data.timeout,
+            proxies: settingsDb.data.proxy
         })
         .referer(STEAM_COMMUNITY_BASE)
         .cookie(options.cookies)
@@ -66,12 +67,13 @@ export async function getConfirmation(options: ConfirmationOptions, confirmation
         p: options.deviceid,
         a: options.steamid
     })
+    const settingsDb = await getSettingsDb()
     return GotHttpApiRequest.get(`${COMMUNITY_ENDPOINTS.confirmationDetail}${confirmationId}`)
         .params(ret)
         .userAgent(DEFAULT_USER_AGENT)
         .requestConfig({
-            timeout: globalStore.getState().settings.timeout,
-            proxies: globalStore.getState().settings.proxy
+            timeout: settingsDb.data.timeout,
+            proxies: settingsDb.data.proxy
         })
         .referer(STEAM_COMMUNITY_BASE)
         .cookie(options.cookies)
@@ -100,12 +102,13 @@ async function ajaxop(options: ConfirmationOptions, confirmation: Confirmation, 
     ret.cid = confirmation.id
     ret.op = op
     ret.ck = confirmation.nonce
+    const settingsDb = await getSettingsDb()
     return GotHttpApiRequest.post(COMMUNITY_ENDPOINTS.ajaxop)
         .data(ret)
         .userAgent(DEFAULT_USER_AGENT)
         .requestConfig({
-            timeout: globalStore.getState().settings.timeout,
-            proxies: globalStore.getState().settings.proxy
+            timeout: settingsDb.data.timeout,
+            proxies: settingsDb.data.proxy
         })
         .referer(COMMUNITY_ENDPOINTS.confirmationDetail + confirmation.id)
         .cookie(options.cookies)

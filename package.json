@@ -14,6 +14,7 @@
     "got": "^14.6.6",
     "hpagent": "^1.2.0",
     "js-base64": "^3.7.8",
+    "lowdb": "^7.0.1",
     "socks-proxy-agent": "^8.0.5",
     "steam-session": "^1.9.4",
     "steam-totp": "^2.1.2",

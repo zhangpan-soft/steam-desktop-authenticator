@@ -2,6 +2,7 @@
 import {onMounted, reactive} from "vue";
 import EResult from "../../utils/EResult.ts";
 import {ElMessage} from "element-plus";
+import {useRoute} from "vue-router";
 
 const data = reactive<{
   list: Confirmation[]
@@ -9,8 +10,12 @@ const data = reactive<{
   list: []
 })
 
+const route = useRoute()
+
 onMounted(() => {
-  window.ipcRenderer.invoke('steam:getConfirmations',)
+  console.log('onMounted','1222222222222222222')
+  const {query} = {...route}
+  window.ipcRenderer.invoke('steam:getConfirmations',{account_name: query.account_name})
       .then((res: SteamResponse<ConfirmationsResponse>) => {
         if (res.eresult === EResult.OK) {
           data.list = res.response?.conf || []

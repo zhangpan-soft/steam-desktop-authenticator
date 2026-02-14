@@ -18,6 +18,6 @@ const ipcMainHandler = new IpcMainHandler()
 export default ipcMainHandler
 
 export function initIpc(){
-    import('./electron.ts')
+    import('./system.ts')
     import('./steam.ts')
 }

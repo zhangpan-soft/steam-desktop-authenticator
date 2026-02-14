@@ -6,10 +6,6 @@ import path from 'node:path'
 createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-import globalStore from "./store";
-import {generateAuthCode} from "./steam/steam-community.ts";
-import {readMaFile} from "./ma-file.ts";
-
 // The built directory structure
 //
 // ├─┬─┬ dist
@@ -27,65 +23,6 @@ export const MAIN_DIST = path.join(process.env.APP_ROOT, 'dist-electron')
 export const RENDERER_DIST = path.join(process.env.APP_ROOT, 'dist')
 
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 'public') : RENDERER_DIST
-
-console.log('11111', VITE_DEV_SERVER_URL)
-
-// 优化定时器逻辑：防止并发执行
-let isTokenUpdating = false;
-
-const updateToken = async () => {
-    if (isTokenUpdating) return;
-    const state = globalStore.getState();
-    const currentAccount = state.runtimeContext.currentAccount;
-
-    if (!currentAccount) return;
-
-    isTokenUpdating = true;
-    try {
-        let sharedSecret = currentAccount.info?.shared_secret;
-
-        // 如果没有 info，尝试读取文件
-        if (!sharedSecret) {
-            try {
-                const result = await readMaFile(
-                    path.join(state.settings.maFilesDir, currentAccount.filename),
-                    {
-                        passkey: state.runtimeContext.passkey,
-                        iv: currentAccount.encryption_iv,
-                        salt: currentAccount.encryption_salt,
-                    }
-                );
-
-                if (result && result.data) {
-                    const steamGuard = result.data as SteamGuard;
-                    // 更新内存中的 account info，避免下次重复读取
-                    // 注意：这里最好深拷贝一份再更新，遵循不可变数据原则
-                    const newAccount = {...currentAccount, info: steamGuard};
-                    globalStore.updateState('runtime', 'currentAccount', newAccount);
-                    sharedSecret = steamGuard.shared_secret;
-                }
-            } catch (err) {
-                console.error("Failed to read maFile for token generation:", err);
-                // 可以考虑增加错误计数，失败多次后暂停尝试
-            }
-        }
-
-        if (sharedSecret) {
-            const code = await generateAuthCode(sharedSecret);
-            globalStore.updateState('runtime', 'token', code);
-
-            const timeOffset = state.runtimeContext.timeOffset || 0;
-            const progress = (30 - (Date.now() / 1000 + timeOffset) % 30) / 30 * 100;
-            globalStore.updateState('runtime', 'progress', progress);
-        }
-    } catch (e) {
-        console.error("Error in token update loop:", e);
-    } finally {
-        isTokenUpdating = false;
-    }
-};
-
-const tokenInterval = setInterval(updateToken, 1000);
 
 class WindowManager {
     private _main: BrowserWindow | null = null
@@ -256,7 +193,6 @@ const windowManager = new WindowManager()
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
         app.quit()
-        clearInterval(tokenInterval)
     }
 })
 

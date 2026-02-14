@@ -1,6 +1,5 @@
 import {GotHttpApiRequest} from "../utils/requests.ts";
 import getEndpoints, {PHONE_AJAX_URL} from "./endpoints.ts";
-import globalStore from "../store";
 import {
     ACCESS_TOKEN_NAME,
     DATA_ACTIVATION_CODE_NAME,
@@ -19,6 +18,8 @@ import {
 import {EResult} from "steam-session";
 import {parseErrorResult, parseSteamResult, parseToken} from "./index.ts";
 import {generateAuthCode} from "./steam-community.ts";
+import {getSettingsDb} from "../db";
+import runtimeContext from "../utils/runtime-context.ts";
 
 /**
  * 查询服务器时间
@@ -26,13 +27,13 @@ import {generateAuthCode} from "./steam-community.ts";
 export async function QueryTime(): Promise<QueryTimeResponse> {
 
     // Steam API 通常需要 POST 且带上 steamid=0 (虽然有时不带也能过，但带上更标准)
-
+    const settingsDb = await getSettingsDb()
     const response = await GotHttpApiRequest.post(getEndpoints('TwoFactor', 'QueryTime', 1))
         .data(STEAM_ID_NAME, '0')
         .data()
         .requestConfig({
-            timeout: 5000,
-            proxies: globalStore.getState().settings.proxy
+            timeout: settingsDb.data.timeout,
+            proxies: settingsDb.data.proxy
         })
         .userAgent(DEFAULT_USER_AGENT)
         .perform()
@@ -53,31 +54,27 @@ export async function QueryTime(): Promise<QueryTimeResponse> {
     // 更新缓存策略
     // 如果 API 返回了 try_again_seconds 则使用，否则默认 10 分钟
     const cacheDuration = (data.try_again_seconds || 600) * 1000
-    const state = globalStore.getState()
-    state.runtimeContext.timeNextSyncTime = Date.now() + cacheDuration
+    runtimeContext.timeNextSyncTime = Date.now() + cacheDuration
 
     // 计算时间偏移量 (Server - Local)
     // 注意：server_time 是秒，Date.now() 是毫秒
     const serverTimeSec = parseInt(data.server_time, 10)
     console.log('serverTimeSec', serverTimeSec)
-    state.runtimeContext.timeOffset = serverTimeSec - Math.floor(Date.now() / 1000)
-    console.log('timeOffset', state.runtimeContext.timeOffset)
-
-    globalStore.updateState('runtime', 'timeOffset', state.runtimeContext.timeOffset)
-    globalStore.updateState('runtime', 'timeNextSyncTime', state.runtimeContext.timeNextSyncTime)
-
+    runtimeContext.timeOffset = serverTimeSec - Math.floor(Date.now() / 1000)
+    console.log('timeOffset', runtimeContext.timeOffset)
     return data
 
 }
 
 export async function hasPhoneAttached(sessionid: string, cookies: string): Promise<SteamResponse<boolean>> {
+    const settingsDb = await getSettingsDb()
     return GotHttpApiRequest.post(PHONE_AJAX_URL)
         .data('op', 'has_phone')
         .data('arg', 'null')
         .data(SESSION_ID_NAME, sessionid)
         .data()
         .cookie(cookies)
-        .requestConfig({timeout: 5000, proxies: globalStore.getState().settings.proxy})
+        .requestConfig({timeout: settingsDb.data.timeout, proxies: settingsDb.data.proxy})
         .userAgent(DEFAULT_USER_AGENT)
         .perform()
         .then(res => {
@@ -99,6 +96,7 @@ export async function hasPhoneAttached(sessionid: string, cookies: string): Prom
 
 export async function AddAuthenticator(access_token: string,
                                        deviceid: string):Promise<SteamResponse<SteamGuard>>{
+    const settingsDb = await getSettingsDb()
     return GotHttpApiRequest.post(getEndpoints('TwoFactor','AddAuthenticator',1))
         .param(ACCESS_TOKEN_NAME, access_token)
         .data(STEAM_ID_NAME, parseToken(access_token).payload.sub)
@@ -106,7 +104,7 @@ export async function AddAuthenticator(access_token: string,
         .data(DATA_SMS_PHONE_ID_NAME, DEFAULT_DATA_SMS_PHONE_ID_VALUE)
         .data(DATA_DEVICE_IDENTIFIER_NAME, deviceid)
         .data()
-        .requestConfig({timeout: 5000, proxies: globalStore.getState().settings.proxy})
+        .requestConfig({timeout: settingsDb.data.timeout, proxies: settingsDb.data.proxy})
         .userAgent(DEFAULT_USER_AGENT)
         .perform()
         .then(res => parseSteamResult<SteamGuard>(res))
@@ -117,14 +115,15 @@ export async function finalizeAddAuthenticator(access_token: string,
                                                shared_secret: string,
                                                smsCode: string):Promise<SteamResponse<FinalizeAuthenticatorResponse>> {
     const code = await generateAuthCode(shared_secret)
+    const settingsDb = await getSettingsDb()
     return GotHttpApiRequest.post(getEndpoints('TwoFactor', 'FinalizeAddAuthenticator',1))
         .param(ACCESS_TOKEN_NAME, access_token)
         .data(STEAM_ID_NAME, parseToken(access_token).payload.sub)
         .data(DATA_ACTIVATION_CODE_NAME, smsCode)
         .data(DATA_AUTHENTICATOR_CODE_NAME,code)
-        .data(DATA_AUTHENTICATOR_TIME_NAME, Date.now()/1000+globalStore.getState().runtimeContext.timeOffset)
+        .data(DATA_AUTHENTICATOR_TIME_NAME, Date.now()/1000+runtimeContext.timeOffset)
         .data()
-        .requestConfig({timeout: 5000, proxies: globalStore.getState().settings.proxy})
+        .requestConfig({timeout: settingsDb.data.timeout, proxies: settingsDb.data.proxy})
         .userAgent(DEFAULT_USER_AGENT)
         .perform()
         .then(res => parseSteamResult<FinalizeAuthenticatorResponse>(res))
@@ -132,12 +131,13 @@ export async function finalizeAddAuthenticator(access_token: string,
 }
 
 export async function RemoveAuthenticatorViaChallengeStart(access_token: string, cookies: string){
+    const settingsDb = await getSettingsDb()
     return GotHttpApiRequest.post(getEndpoints('TwoFactor','RemoveAuthenticatorViaChallengeStart',1))
         .param(ACCESS_TOKEN_NAME, access_token)
         .data(STEAM_ID_NAME, parseToken(access_token).payload.sub)
         .data()
         .cookie(cookies)
-        .requestConfig({timeout: 5000, proxies: globalStore.getState().settings.proxy})
+        .requestConfig({timeout: settingsDb.data.timeout, proxies: settingsDb.data.proxy})
         .userAgent(DEFAULT_USER_AGENT)
         .perform()
         .then(res=>parseSteamResult<any>(res))
@@ -145,13 +145,14 @@ export async function RemoveAuthenticatorViaChallengeStart(access_token: string,
 }
 
 export async function RemoveAuthenticatorViaChallengeContinue(access_token:string, smsCode: string){
+    const settingsDb = await getSettingsDb()
     return GotHttpApiRequest.post(getEndpoints('TwoFactor','RemoveAuthenticatorViaChallengeContinue',1))
         .param(ACCESS_TOKEN_NAME, access_token)
         .data(STEAM_ID_NAME, parseToken(access_token).payload.sub)
         .data(DATA_SMS_CODE_NAME, smsCode)
         .data(DATA_GENERATE_NEW_TOKEN_NAME, true)
         .data()
-        .requestConfig({timeout: 5000, proxies: globalStore.getState().settings.proxy})
+        .requestConfig({timeout: settingsDb.data.timeout, proxies: settingsDb.data.proxy})
         .userAgent(DEFAULT_USER_AGENT)
         .perform()
         .then(res=>parseSteamResult<RemoveAuthenticatorViaChallengeContinueResponse>(res))
@@ -159,11 +160,12 @@ export async function RemoveAuthenticatorViaChallengeContinue(access_token:strin
 }
 
 export async function QueryStatus(access_token: string){
+    const settingsDb = await getSettingsDb()
     return GotHttpApiRequest.post(getEndpoints('TwoFactor','QueryStatus',1))
         .param(ACCESS_TOKEN_NAME, access_token)
         .data(STEAM_ID_NAME, parseToken(access_token).payload.sub)
         .data()
-        .requestConfig({timeout: 5000, proxies: globalStore.getState().settings.proxy})
+        .requestConfig({timeout: settingsDb.data.timeout, proxies: settingsDb.data.proxy})
         .userAgent(DEFAULT_USER_AGENT)
         .perform()
         .then(res=>parseSteamResult<QueryStatusResponse>(res))

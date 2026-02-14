@@ -3,7 +3,6 @@ import {
     EAuthTokenPlatformType,
     EResult
 } from 'steam-session';
-import globalStore from "../store";
 import {ConstructorOptions} from "steam-session/dist/interfaces-external";
 import {
     DEFAULT_APP_VERSION,
@@ -14,6 +13,7 @@ import {
 } from "./constants.ts";
 import {parseToken} from "./index.ts";
 import windowManager from "../window-manager.ts";
+import {getSettingsDb} from "../db";
 
 class SteamLoginExecutor {
     // 使用 Map 管理所有正在进行或已登录的会话
@@ -48,10 +48,10 @@ class SteamLoginExecutor {
             }
 
             // 3. 准备代理配置
-            const state = globalStore.getState();
+            const settingsDb = await getSettingsDb()
             const sessionOptions: ConstructorOptions = {};
-            if (state.settings.proxy) {
-                const proxy = state.settings.proxy.trim();
+            if (settingsDb.data.proxy) {
+                const proxy = settingsDb.data.proxy.trim();
                 if (proxy.startsWith('http')) {
                     sessionOptions.httpProxy = proxy;
                 } else if (proxy.startsWith('socks')) {
@@ -249,7 +249,7 @@ class SteamLoginExecutor {
     private _sendLoginMessage(payload: SteamLoginEvent) {
         // 统一通过 IPC 发送给渲染进程
         // 渲染进程通过 payload.account_name 来判断更新 UI 上的哪个卡片
-        windowManager.sendEvent('/steamLogin', 'steam:message:login-status-changed', {...payload})
+        windowManager.sendEvent('/steam/steamLogin', 'steam:message:login-status-changed', {...payload})
     }
 }
 

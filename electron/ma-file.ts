@@ -1,7 +1,6 @@
 import * as crypto from 'crypto';
 import path from "node:path";
 import * as fs from 'node:fs/promises';
-import globalStore from "./store";
 
 export interface EncryptionData {
     salt: string; // Base64 string from manifest.json
@@ -123,50 +122,4 @@ export async function readMaFile(maFilePath: string, options?:{passkey?: string,
             data: _data
         }
     }
-}
-
-export async function saveMaFile(content: string, password?:string){
-
-    const state = globalStore.getState()
-    await exists(state.settings.maFilesDir).then(f=>{
-        if (!f){
-            return fs.mkdir(state.settings.maFilesDir,{recursive: true});
-        }
-    }).then()
-    const _ = JSON.parse(content)
-    const account_name = _.account_name
-    const steamid = _.Session?.SteamID
-    const _entry:EntryType = {
-        steamid,
-        filename: `${account_name}.maFile`,
-        encryption_iv: null,
-        encryption_salt: null,
-        account_name: _.account_name
-    }
-    if (password){
-        const encrypted = SDAFileEncryptor.encrypt(content, password)
-        _entry.encryption_iv = encrypted.iv
-        _entry.encryption_salt = encrypted.salt
-        await fs.writeFile(path.join(state.settings.maFilesDir,_entry.filename), encrypted.encryptedContent, 'utf8')
-    } else {
-        await fs.writeFile(path.join(state.settings.maFilesDir,_entry.filename), content, 'utf8')
-    }
-    let index = -1
-
-    for (let i = 0; i < state.settings.entries.length; i++) {
-        if (state.settings.entries[i].steamid === steamid){
-            index = i
-            break
-        }
-    }
-    if (index > -1){
-        state.settings.entries[index] = _entry
-    } else {
-        state.settings.entries.push(_entry)
-    }
-    globalStore.updateState('settings', 'entries', state.settings.entries)
-}
-
-const exists = async (p: string)=>{
-    return fs.access(p).then(()=>true).catch(()=>false)
 }

@@ -17,17 +17,3 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
     // You can expose other APTs you need here.
     // ...
 })
-
-contextBridge.exposeInMainWorld('store',{
-    getInitialState: () => ipcRenderer.invoke('store:get-initial'),
-
-    // 发送时带上 scope
-    syncSet: (scope: string, path: string, value: any) =>
-        ipcRenderer.send('store:renderer-update', scope, path, value),
-
-    onSyncUpdate: (callback: Function) => {
-        ipcRenderer.on('store:main-update', (_event, scope, path, value) =>
-            callback(scope, path, value)
-        );
-    }
-})

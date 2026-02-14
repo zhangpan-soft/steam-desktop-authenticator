@@ -9,7 +9,7 @@ import {
 } from "./constants.ts";
 import {parseErrorResult, parseSteamResult} from "./index.ts";
 import * as crypto from "node:crypto";
-import globalStore from "../store";
+import {getSettingsDb} from "../db";
 
 export async function DeregisterMobileDevice() {
     throw Error('Not Support')
@@ -17,6 +17,7 @@ export async function DeregisterMobileDevice() {
 
 export async function RegisterMobileDevice(access_token: string) {
     const deviceid = `${DEFAULT_CLIENT_PLATFORM}:${crypto.randomUUID().toLowerCase()}`
+    const settingsDb = await getSettingsDb();
     return GotHttpApiRequest.post(getEndpoints('MobileDevice', 'RegisterMobileDevice', 1))
         .param(ACCESS_TOKEN_NAME, access_token)
         .data(LANGUAGE_NAME, DEFAULT_LANGUAGE)
@@ -24,7 +25,7 @@ export async function RegisterMobileDevice(access_token: string) {
         .data(DEVICEID_NAME, deviceid)
         .data()
         .userAgent(DEFAULT_USER_AGENT)
-        .requestConfig({timeout: 5000, proxies: globalStore.getState().settings.proxy})
+        .requestConfig({timeout: settingsDb.data.timeout, proxies: settingsDb.data.proxy})
         .perform()
         .then(res => {
             const response:SteamResponse<string> = parseSteamResult(res)

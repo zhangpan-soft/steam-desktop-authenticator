@@ -25,7 +25,6 @@ type ElectronMessageChannel =
     'showOpenDialog'
     | 'readFile'
     | 'readMaFile'
-    | 'saveMaFile'
     | 'store:get-initial'
     | 'store:renderer-update'
     | 'store:main-update'
@@ -33,6 +32,10 @@ type ElectronMessageChannel =
     | 'importMaFile'
     | 'open-window'
     | 'close-window'
+    | 'settings:get'
+    | 'settings:set'
+    | 'context:get'
+    | 'context:set'
     | SteamMessageChannel
 
 type SteamMessageChannel =
@@ -41,8 +44,11 @@ type SteamMessageChannel =
     | 'steam:cancelLogin'
     | 'steam:message:login-status-changed'
     | 'steam:getConfirmations'
+    | 'steam:token'
+    | 'steam:account:get'
+    | 'steam:account:set'
 
-type WindowHashType = '/' | '/confirmations' | '/steamLogin'
+type WindowHashType = '/' | '/steam/confirmations' | '/steam/steamLogin' | '/system/settings'
 
 type WindowUri = {
     hash: WindowHashType
@@ -59,13 +65,6 @@ interface Window {
         send(channel: ElectronMessageChannel, ...args: any[]): void
         invoke(channel: ElectronMessageChannel, ...args: any[]): Promise<any>
     }
-    store: {
-        getInitialState: () => Promise<GlobalState>;
-        // 发送更新：指定 scope (settings/runtime), key, value
-        syncSet: (scope: UpdateScope, path: string, value: any) => void;
-        onSyncUpdate: (callback: (scope: UpdateScope, path: string, value: any) => void) => void;
-    }
-    state: GlobalState
 }
 
 interface IHttpRequest {
@@ -168,9 +167,6 @@ interface IHttpUri {
 }
 
 interface EntryType {
-    encryption_iv: string | null
-    encryption_salt: string | null
-    filename: string
     steamid: string,
     account_name: string
 }
@@ -190,14 +186,9 @@ interface Settings {
 }
 
 interface RuntimeContext {
-    passkey: string
-    token: string
-    progress: number
-    selectedSteamid: string
+    passkey?: string
     timeOffset: number
     timeNextSyncTime: number
-    loginSession?: any,
-    currentAccount?: EntryType & { info?: SteamAccount }
 }
 
 interface SteamAccount extends SteamGuard {
@@ -213,13 +204,6 @@ interface SteamSession {
     at: number
     rt: number
     SessionID: string
-}
-
-type UpdateScope = 'settings' | 'runtime'
-
-interface GlobalState {
-    settings: Settings
-    runtimeContext: RuntimeContext
 }
 
 // 定义发送给前端的消息结构

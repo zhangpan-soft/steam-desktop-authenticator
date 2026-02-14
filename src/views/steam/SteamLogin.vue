@@ -102,16 +102,16 @@ function steamLogin(options: SteamLoginOptions) {
   return window.ipcRenderer.invoke('steam:login', options)
 }
 
-function cancelSteamLogin(){
+function cancelSteamLogin() {
   currentData.loginForm.accountPasswordLoginConfirmLoading = true
-  if (!currentData.loginForm.account_name || currentData.loginForm.account_name.length===0){
-    closeWindow().finally(()=>{
+  if (!currentData.loginForm.account_name || currentData.loginForm.account_name.length === 0) {
+    closeWindow().finally(() => {
       currentData.loginForm.accountPasswordLoginConfirmLoading = false
     })
   } else {
-    window.ipcRenderer.invoke('steam:cancelLogin',{account_name: currentData.loginForm.account_name})
-        .then(()=> closeWindow())
-        .finally(()=>{
+    window.ipcRenderer.invoke('steam:cancelLogin', {account_name: currentData.loginForm.account_name})
+        .then(() => closeWindow())
+        .finally(() => {
           currentData.loginForm.accountPasswordLoginConfirmLoading = false
         })
   }
@@ -121,8 +121,8 @@ function handleAccountPasswordLoginCancel() {
   cancelSteamLogin()
 }
 
-function closeWindow(){
-  return window.ipcRenderer.invoke('close-window',{hash: '/steamLogin'})
+function closeWindow() {
+  return window.ipcRenderer.invoke('close-window', {hash: '/steam/steamLogin'})
 }
 
 function handleAccountPasswordLoginConfirm(formEl: FormInstance | undefined) {
@@ -149,7 +149,7 @@ function handleSteamGuardCodeCancel() {
 }
 
 function handleSteamGuardCodeConfirm() {
-  window.ipcRenderer.invoke('steam:submitSteamGuard',{
+  window.ipcRenderer.invoke('steam:submitSteamGuard', {
     account_name: currentData.loginForm.account_name,
     steamGuardCode: currentData.loginForm.steamGuardCode
   }).catch(err => {
@@ -161,7 +161,7 @@ onMounted(() => {
   console.log(route)
   currentData.loginForm.loginType = route.query.loginType as SteamLoginType
   currentData.loginForm.account_name = route.query.account_name as string
-  const steamGuard:SteamGuard = {
+  const steamGuard: SteamGuard = {
     shared_secret: route.query.shared_secret as string,
     serial_number: route.query.serial_number as string,
     revocation_code: route.query.revocation as string,
@@ -192,39 +192,59 @@ window.ipcRenderer.on('steam:message:login-status-changed', (event, args: SteamL
     // 这里可以发送一个 IPC 消息给主窗口，或者主窗口监听这个事件
     // 由于是同一个应用，主窗口也会收到这个事件，所以这里只需要关闭自己
     // todo
-    closeWindow().then()
+    if (currentData.loginForm.loginType === 'ImportSda') {
+      const steamAccount: SteamAccount = {...currentData.currentSteamGuard}
+      steamAccount.Session = {...args.data} as SteamSession
+      window.ipcRenderer.invoke('steam:account:set', steamAccount)
+          .then(() => {
+            ElMessage.success('Import Success')
+          }).finally(() => closeWindow().then())
+    } else if (currentData.loginForm.loginType === 'NewAccount') {
+
+    } else if (currentData.loginForm.loginType === 'ReLogin') {
+
+    } else if (currentData.loginForm.loginType === 'RefreshToken') {
+
+    }
   } else if (args.status === 'Timeout') {
     ElMessage.error('Login Timeout, Please Re-Try Later')
-    window.ipcRenderer.invoke('steam:cancelLogin', {account_name: currentData.loginForm.account_name}).finally(()=>{
+    window.ipcRenderer.invoke('steam:cancelLogin', {account_name: currentData.loginForm.account_name}).finally(() => {
       currentData.loginForm.accountPasswordLoginConfirmLoading = false
     })
   } else if (args.status === 'Need2FA') {
-    currentData.loginForm.showSteamGuardCode = true
-    currentData.loginForm.showAccountName = false
-    currentData.loginForm.showPassword = false
-    currentData.loginForm.rules['steamGuardCode'] = [...defaultSteamGuardCodeRules]
     if (args.valid_actions) {
       if (args.valid_actions.find(value => value.type === 3 || value.type === 4)) {
+        if (currentData.loginForm.loginType === 'ImportSda') {
+          window.ipcRenderer.invoke('steam:submitSteamGuard', {
+            account_name: currentData.loginForm.account_name,
+            shared_secret: currentData.currentSteamGuard.shared_secret
+          }).then()
+          return;
+        }
         currentData.loginForm.steamGuardCodeText = 'Please Input SteamGuard Code Or Confirm In Your SteamGuard App'
       } else if (args.valid_actions.find(value => value.type === 2 || value.type === 5)) {
         currentData.loginForm.steamGuardCodeText = 'Please Input SteamGuard Code Or Confirm In Your Email'
       } else {
         currentData.loginForm.steamGuardCodeText = 'Please Input SteamGuard Code Or Confirm In Your Machine'
       }
+      currentData.loginForm.showSteamGuardCode = true
+      currentData.loginForm.showAccountName = false
+      currentData.loginForm.showPassword = false
+      currentData.loginForm.rules['steamGuardCode'] = [...defaultSteamGuardCodeRules]
     }
   } else if (args.result) {
     ElMessage.error(`Login Failed, Please Re-Try Later.{${args.result}}`)
-    window.ipcRenderer.invoke('steam:cancelLogin', {account_name: currentData.loginForm.account_name}).then(()=>{
+    window.ipcRenderer.invoke('steam:cancelLogin', {account_name: currentData.loginForm.account_name}).then(() => {
       currentData.loginForm.accountPasswordLoginConfirmLoading = false
     })
   } else if (args.error_message) {
     ElMessage.error(`Login Failed, {${args.result}}, {${args.error_message}}.`)
-    window.ipcRenderer.invoke('steam:cancelLogin', {account_name: currentData.loginForm.account_name}).then(()=>{
+    window.ipcRenderer.invoke('steam:cancelLogin', {account_name: currentData.loginForm.account_name}).then(() => {
       currentData.loginForm.accountPasswordLoginConfirmLoading = false
     })
   } else {
     ElMessage.error(`Login Failed, Please Re-Try Later.`)
-    window.ipcRenderer.invoke('steam:cancelLogin', {account_name: currentData.loginForm.account_name}).then(()=>{
+    window.ipcRenderer.invoke('steam:cancelLogin', {account_name: currentData.loginForm.account_name}).then(() => {
       currentData.loginForm.accountPasswordLoginConfirmLoading = false
     })
   }
