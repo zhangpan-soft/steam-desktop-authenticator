@@ -18,8 +18,8 @@ import {
 import {EResult} from "steam-session";
 import {parseErrorResult, parseSteamResult, parseToken} from "./index.ts";
 import {generateAuthCode} from "./steam-community.ts";
-import {getSettingsDb} from "../db";
 import runtimeContext from "../utils/runtime-context.ts";
+import {settingsDb} from "../db";
 
 /**
  * 查询服务器时间
@@ -27,7 +27,6 @@ import runtimeContext from "../utils/runtime-context.ts";
 export async function QueryTime(): Promise<QueryTimeResponse> {
 
     // Steam API 通常需要 POST 且带上 steamid=0 (虽然有时不带也能过，但带上更标准)
-    const settingsDb = await getSettingsDb()
     const response = await GotHttpApiRequest.post(getEndpoints('TwoFactor', 'QueryTime', 1))
         .data(STEAM_ID_NAME, '0')
         .data()
@@ -67,7 +66,6 @@ export async function QueryTime(): Promise<QueryTimeResponse> {
 }
 
 export async function hasPhoneAttached(sessionid: string, cookies: string): Promise<SteamResponse<boolean>> {
-    const settingsDb = await getSettingsDb()
     return GotHttpApiRequest.post(PHONE_AJAX_URL)
         .data('op', 'has_phone')
         .data('arg', 'null')
@@ -96,7 +94,6 @@ export async function hasPhoneAttached(sessionid: string, cookies: string): Prom
 
 export async function AddAuthenticator(access_token: string,
                                        deviceid: string):Promise<SteamResponse<SteamGuard>>{
-    const settingsDb = await getSettingsDb()
     return GotHttpApiRequest.post(getEndpoints('TwoFactor','AddAuthenticator',1))
         .param(ACCESS_TOKEN_NAME, access_token)
         .data(STEAM_ID_NAME, parseToken(access_token).payload.sub)
@@ -115,7 +112,6 @@ export async function finalizeAddAuthenticator(access_token: string,
                                                shared_secret: string,
                                                smsCode: string):Promise<SteamResponse<FinalizeAuthenticatorResponse>> {
     const code = await generateAuthCode(shared_secret)
-    const settingsDb = await getSettingsDb()
     return GotHttpApiRequest.post(getEndpoints('TwoFactor', 'FinalizeAddAuthenticator',1))
         .param(ACCESS_TOKEN_NAME, access_token)
         .data(STEAM_ID_NAME, parseToken(access_token).payload.sub)
@@ -131,7 +127,6 @@ export async function finalizeAddAuthenticator(access_token: string,
 }
 
 export async function RemoveAuthenticatorViaChallengeStart(access_token: string, cookies: string){
-    const settingsDb = await getSettingsDb()
     return GotHttpApiRequest.post(getEndpoints('TwoFactor','RemoveAuthenticatorViaChallengeStart',1))
         .param(ACCESS_TOKEN_NAME, access_token)
         .data(STEAM_ID_NAME, parseToken(access_token).payload.sub)
@@ -145,7 +140,6 @@ export async function RemoveAuthenticatorViaChallengeStart(access_token: string,
 }
 
 export async function RemoveAuthenticatorViaChallengeContinue(access_token:string, smsCode: string){
-    const settingsDb = await getSettingsDb()
     return GotHttpApiRequest.post(getEndpoints('TwoFactor','RemoveAuthenticatorViaChallengeContinue',1))
         .param(ACCESS_TOKEN_NAME, access_token)
         .data(STEAM_ID_NAME, parseToken(access_token).payload.sub)
@@ -160,7 +154,6 @@ export async function RemoveAuthenticatorViaChallengeContinue(access_token:strin
 }
 
 export async function QueryStatus(access_token: string){
-    const settingsDb = await getSettingsDb()
     return GotHttpApiRequest.post(getEndpoints('TwoFactor','QueryStatus',1))
         .param(ACCESS_TOKEN_NAME, access_token)
         .data(STEAM_ID_NAME, parseToken(access_token).payload.sub)

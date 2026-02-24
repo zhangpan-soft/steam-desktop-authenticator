@@ -13,7 +13,7 @@ import {
 } from "./constants.ts";
 import {parseToken} from "./index.ts";
 import windowManager from "../window-manager.ts";
-import {getSettingsDb} from "../db";
+import {settingsDb} from "../db";
 
 class SteamLoginExecutor {
     // 使用 Map 管理所有正在进行或已登录的会话
@@ -48,7 +48,6 @@ class SteamLoginExecutor {
             }
 
             // 3. 准备代理配置
-            const settingsDb = await getSettingsDb()
             const sessionOptions: ConstructorOptions = {};
             if (settingsDb.data.proxy) {
                 const proxy = settingsDb.data.proxy.trim();
