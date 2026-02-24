@@ -5,7 +5,7 @@
 }
 
 .el-header {
-    --el-header-padding: 0px;
+    --el-header-padding: 5px;
     --el-header-height: auto;
     flex-shrink: 0;
     display: flex;
@@ -15,7 +15,7 @@
 }
 
 .el-main {
-    --el-main-padding: 0px; /* 移除内边距 */
+    --el-main-padding: 5px; /* 移除内边距 */
     flex: 1;
     overflow: hidden;
     display: flex;
@@ -24,7 +24,7 @@
 }
 
 .el-footer {
-    --el-footer-padding: 0px;
+    --el-footer-padding: 5px;
     --el-footer-height: auto;
     flex-shrink: 0;
     border-top: 1px solid #dcdfe6;
@@ -96,4 +96,12 @@
 /* 最后一个列表项移除底部边框 */
 .list-item-card:last-child {
     border-bottom: none;
+}
+
+/* 强制居中样式 */
+.header-center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
 }

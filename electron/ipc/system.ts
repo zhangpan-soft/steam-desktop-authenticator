@@ -4,7 +4,7 @@ import path from "node:path";
 import {readMaFile} from "../ma-file.ts";
 import windowManager from "../window-manager.ts";
 import ipcMainHandler from "./index.ts";
-import {getSettingsDb} from "../db";
+import {settingsDb, steamAccountDbs} from "../db";
 import runtimeContext from "../utils/runtime-context.ts";
 
 
@@ -21,8 +21,7 @@ ipcMainHandler
         console.log('readMaFile', args, event)
         let filepath = args.path
         if (!filepath && args.filename) {
-            const settingsDb = await getSettingsDb()
-            filepath = path.join(settingsDb.data.maFilesDir, args.filename)
+            filepath = path.join(settingsDb.get().maFilesDir, args.filename)
         }
         return readMaFile(filepath, {passkey: args.passkey, iv: args.iv, salt: args.salt})
     })
@@ -42,13 +41,11 @@ ipcMainHandler
     })
     .handle('settings:get', async (event, args) => {
         console.log('settings:get', args, event)
-        return (await getSettingsDb()).data
+        return settingsDb.get()
     })
     .handle('settings:set', async (event, args) => {
         console.log('settings:set', args, event)
-        const settingsDb = await getSettingsDb()
-        settingsDb.data = {...settingsDb.data, ...args}
-        await settingsDb.write()
+        settingsDb.set(args)
     })
     .handle('context:get', async (event, args) => {
         console.log('context:get', args, event)
@@ -57,6 +54,17 @@ ipcMainHandler
     .handle('context:set', async (event, args) => {
         console.log('context:set', args, event)
         if (args.passkey) {
+            const settings = settingsDb.get()
+            if (!settings.encrypted){
+                settings.encrypted = true
+                if (settings.entries.length>0){
+                    settings.entries.forEach((item) => {
+                        steamAccountDbs.db(item.account_name, args.passkey)
+                    })
+                }
+            } else if (settings.entries.length>0){
+                steamAccountDbs.db(settings.entries[0].account_name, args.passkey)
+            }
             runtimeContext.passkey = args.passkey
         }
         return true

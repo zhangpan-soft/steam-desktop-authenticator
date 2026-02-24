@@ -117,6 +117,7 @@ function handleSetupNewAccount() {
       modal: true,
       show: false,
       icon: 'electron-vite.svg',
+      useContentSize: true
     }
   })
 }
@@ -128,12 +129,13 @@ function handleSettings(){
     },
     options: {
       width: 420,
-      height: 400,
+      height: 310,
       resizable: false,
       title: 'Settings',
       modal: true,
       show: false,
       icon: 'electron-vite.svg',
+      useContentSize: true
     }
   })
 }
@@ -141,42 +143,67 @@ function handleSettings(){
 function handleImportAccount(){
   window.ipcRenderer.invoke('open-window', {
     uri: {
-      hash: '/steam/importSda'
+      hash: '/steam/importAccount'
     },
     options: {
       width: 420,
-      height: 500,
+      height: 130,
       resizable: false,
       title: 'Import Account',
       modal: true,
       show: false,
       icon: 'electron-vite.svg',
+      useContentSize: true
     }
   })
 }
 
+function handleSetupEncryption(){
+  openUnlockWindow()
+}
+
+function openUnlockWindow(){
+  window.ipcRenderer.invoke('open-window',{
+    uri: {
+      hash: '/system/unlock',
+    },
+    options: {
+      width: 420,
+      height: 300,
+      resizable: false,
+      title: 'Unlock',
+      modal: true,
+      show: false,
+      icon: 'electron-vite.svg',
+    }
+  }).then()
+}
+
 onMounted(() => {
   window.ipcRenderer.invoke('settings:get',)
-      .then(settings=>{
+      .then((settings: Settings)=>{
         console.log('settings',settings)
-        if (!settings.first_run){
+        if (settings.first_run){
+          window.ipcRenderer.invoke('open-window',{
+            uri: {
+              hash: '/system/initializing',
+            },
+            options: {
+              width: 420,
+              height: 300,
+              resizable: false,
+              title: 'Initializing',
+              modal: true,
+              show: false,
+              icon: 'electron-vite.svg',
+            }
+          }).then()
+        } else {
           currentData.entries = {...settings.entries}
-          return
-        }
-        window.ipcRenderer.invoke('open-window',{
-          uri: {
-            hash: '/system/initializing',
-          },
-          options: {
-            width: 420,
-            height: 300,
-            resizable: false,
-            title: 'Initializing',
-            modal: true,
-            show: false,
-            icon: 'electron-vite.svg',
+          if (settings.encrypted){
+            openUnlockWindow()
           }
-        })
+        }
       })
 })
 
@@ -187,7 +214,7 @@ onUnmounted(()=>{
 </script>
 
 <template>
-  <div class="container">
+  <el-container class="container">
     <!--  顶部菜单  -->
     <el-header>
       <el-dropdown trigger="click" size="small">
@@ -220,7 +247,7 @@ onUnmounted(()=>{
       <div class="section">
         <el-button-group size="small" class="full-width-group">
           <el-button @click="handleSetupNewAccount" size="small">Setup New Account</el-button>
-          <el-button size="small">Setup Encryption</el-button>
+          <el-button size="small" @click="handleSetupEncryption">Setup Encryption</el-button>
         </el-button-group>
       </div>
       <el-divider class="custom-divider"/>
@@ -286,7 +313,7 @@ onUnmounted(()=>{
         <el-text size="small">v1.0.15</el-text>
       </el-row>
     </el-footer>
-  </div>
+  </el-container>
 
 </template>
 

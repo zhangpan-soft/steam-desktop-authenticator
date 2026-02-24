@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import {onMounted, reactive, toRaw} from "vue";
 import {ElMessage} from "element-plus";
+import Dialog from "../../components/Dialog.vue";
 
 const currentData = reactive<{
-  settings: Settings
+  settings: Settings,
+  loading: boolean
 }>({
   settings: {
     encrypted: false,
@@ -17,16 +19,19 @@ const currentData = reactive<{
     entries: [],
     proxy: '',
     timeout: 3000
-  }
+  },
+  loading: false
 })
 
 function handleCancel() {
+  currentData.loading = true
   window.ipcRenderer.invoke('close-window', {
     hash: '/system/settings'
-  }).then()
+  }).finally(()=>currentData.loading = false);
 }
 
 function handleSave() {
+  currentData.loading = true
   const _  = toRaw<Settings>(currentData.settings)
   const args = {..._}
   window.ipcRenderer.invoke('settings:set', args)
@@ -37,24 +42,22 @@ function handleSave() {
         ElMessage.error('Save Failed')
       })
       .then(() => window.ipcRenderer.invoke('close-window', {hash: '/system/settings'}))
-      .then()
+      .finally(()=>currentData.loading=false)
 }
 
 onMounted(() => {
+  currentData.loading = true
   window.ipcRenderer.invoke('settings:get',).then((res: Settings) => {
     currentData.settings = {...res}
+  }).finally(()=>{
+    currentData.loading = false
   })
 })
 </script>
 
 <template>
-  <el-card class="settings-card">
-    <template #header>
-      <el-row justify="center" align="middle">
-        <el-text size="large">Settings</el-text>
-      </el-row>
-    </template>
-    <el-row justify="start" align="middle" class="settings-row">
+  <Dialog :title="'Settings'" @cancel="handleCancel" @confirm="handleSave" :loading="currentData.loading" :confirm-button-text="'Save'">
+    <el-row justify="start" align="middle">
       <el-checkbox v-model="currentData.settings.periodic_checking" size="small"/>
       <el-text size="small" class="settings-text"
                @click="currentData.settings.periodic_checking = !currentData.settings.periodic_checking">
@@ -115,14 +118,7 @@ onMounted(() => {
         Timeout of requests in milliseconds
       </el-text>
     </el-row>
-    <template #footer>
-      <el-row justify="center" align="middle" class="settings-row" style="padding-top: 10px">
-        <el-button size="small" plain type="default" @click="handleCancel">Cancel</el-button>
-        <el-button size="small" plain type="default" @click="handleSave">Save</el-button>
-      </el-row>
-    </template>
-  </el-card>
-
+  </Dialog>
 </template>
 
 <style scoped>
@@ -131,8 +127,8 @@ onMounted(() => {
   display: flex; /* 启用 Flex 布局 */
   align-items: center; /* 垂直居中核心属性 */
   flex-wrap: nowrap; /* 禁止整个行换行 */
-  margin-bottom: 12px; /* 行间距 */
   width: 100%;
+  padding: 2px;
 }
 
 .settings-text {
@@ -143,11 +139,4 @@ onMounted(() => {
   line-height: 1.4; /* 增加行高，多行时更美观 */
   cursor: pointer; /* 鼠标变成手型，提示可点击 */
 }
-.settings-card{
-  --el-card-padding: 0px 5px 0px 5px;
-}
-.el-card__header{
-  padding: 10px;
-}
-
 </style>

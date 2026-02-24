@@ -32,6 +32,11 @@ const router = createRouter({
       path: '/system/unlock',
       name: 'Unlock',
       component: import('../views/system/Unlock.vue')
+    },
+    {
+      path: '/steam/importAccount',
+      name: 'ImportAccount',
+      component: import('../views/steam/ImportAccount.vue')
     }
   ]
 })

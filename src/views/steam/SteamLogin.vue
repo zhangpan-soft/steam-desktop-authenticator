@@ -3,6 +3,7 @@ import {onMounted, reactive, ref} from 'vue'
 import {Hide, Lock, Unlock, UserFilled, View} from "@element-plus/icons-vue";
 import {ElMessage, FormInstance, FormItemRule, FormRules} from "element-plus";
 import {useRoute} from "vue-router";
+import Dialog from "../../components/Dialog.vue";
 
 const route = useRoute()
 
@@ -15,15 +16,12 @@ type LoginFormType = {
   showSteamGuardCode: boolean
   showAccountName: boolean,
   showPassword: boolean,
-  accountPasswordLoginCancelLoading: boolean
-  accountPasswordLoginConfirmLoading: boolean
-  steamGuardCodeCancelLoading: boolean
-  steamGuardCodeConfirmLoading: boolean
   loginType: SteamLoginType,
   passwordLocked: boolean,
   passwordInputType: 'password' | 'text',
   rules: FormRules,
   steamGuardCodeText: string,
+  loading: boolean
 }
 
 const defaultAccountNameRules: FormItemRule[] = [
@@ -67,10 +65,6 @@ const defaultLoginForm: LoginFormType = {
   showSteamGuardCode: false,
   showAccountName: true,
   showPassword: true,
-  accountPasswordLoginCancelLoading: false,
-  accountPasswordLoginConfirmLoading: false,
-  steamGuardCodeCancelLoading: false,
-  steamGuardCodeConfirmLoading: false,
   loginType: 'NewAccount',
   passwordLocked: true,
   passwordInputType: 'password',
@@ -79,15 +73,18 @@ const defaultLoginForm: LoginFormType = {
     password: [...defaultPasswordRules],
     steamGuardCode: [...defaultSteamGuardCodeRules]
   },
-  steamGuardCodeText: ''
+  steamGuardCodeText: '',
+  loading: false
 }
 
 const currentData = reactive<{
   loginForm: LoginFormType
   currentSteamGuard: SteamGuard
+  steps: number
 }>({
   loginForm: {...defaultLoginForm},
-  currentSteamGuard: {} as SteamGuard
+  currentSteamGuard: {} as SteamGuard,
+  steps: 0
 })
 
 type SteamLoginOptions = {
@@ -103,16 +100,16 @@ function steamLogin(options: SteamLoginOptions) {
 }
 
 function cancelSteamLogin() {
-  currentData.loginForm.accountPasswordLoginConfirmLoading = true
+  currentData.loginForm.loading = true
   if (!currentData.loginForm.account_name || currentData.loginForm.account_name.length === 0) {
     closeWindow().finally(() => {
-      currentData.loginForm.accountPasswordLoginConfirmLoading = false
+      currentData.loginForm.loading = false
     })
   } else {
     window.ipcRenderer.invoke('steam:cancelLogin', {account_name: currentData.loginForm.account_name})
         .then(() => closeWindow())
         .finally(() => {
-          currentData.loginForm.accountPasswordLoginConfirmLoading = false
+          currentData.loginForm.loading = false
         })
   }
 }
@@ -125,15 +122,15 @@ function closeWindow() {
   return window.ipcRenderer.invoke('close-window', {hash: '/steam/steamLogin'})
 }
 
-function handleAccountPasswordLoginConfirm(formEl: FormInstance | undefined) {
-  if (!formEl) {
+function handleAccountPasswordLoginConfirm() {
+  if (!loginFormRef.value) {
     return
   }
-  currentData.loginForm.accountPasswordLoginConfirmLoading = true
+  currentData.loginForm.loading = true
   currentData.loginForm.rules['steamGuardCode'] = []
-  formEl.validate((valid: boolean) => {
+  loginFormRef.value.validate((valid: boolean) => {
     if (!valid) {
-      currentData.loginForm.accountPasswordLoginConfirmLoading = false
+      currentData.loginForm.loading = false
       return
     }
     steamLogin({
@@ -155,6 +152,22 @@ function handleSteamGuardCodeConfirm() {
   }).catch(err => {
     ElMessage.error(err.message)
   })
+}
+
+function handleCancel(){
+  if (currentData.steps===0){
+    handleAccountPasswordLoginCancel()
+  } else if (currentData.steps===1){
+    handleSteamGuardCodeCancel()
+  }
+}
+
+function handleConfirm(){
+  if (currentData.steps===0) {
+    handleAccountPasswordLoginConfirm()
+  } else if (currentData.steps === 1) {
+    handleSteamGuardCodeConfirm()
+  }
 }
 
 onMounted(() => {
@@ -209,9 +222,10 @@ window.ipcRenderer.on('steam:message:login-status-changed', (event, args: SteamL
   } else if (args.status === 'Timeout') {
     ElMessage.error('Login Timeout, Please Re-Try Later')
     window.ipcRenderer.invoke('steam:cancelLogin', {account_name: currentData.loginForm.account_name}).finally(() => {
-      currentData.loginForm.accountPasswordLoginConfirmLoading = false
+      currentData.loginForm.loading = false
     })
   } else if (args.status === 'Need2FA') {
+    currentData.steps = 1
     if (args.valid_actions) {
       if (args.valid_actions.find(value => value.type === 3 || value.type === 4)) {
         if (currentData.loginForm.loginType === 'ImportSda') {
@@ -235,87 +249,66 @@ window.ipcRenderer.on('steam:message:login-status-changed', (event, args: SteamL
   } else if (args.result) {
     ElMessage.error(`Login Failed, Please Re-Try Later.{${args.result}}`)
     window.ipcRenderer.invoke('steam:cancelLogin', {account_name: currentData.loginForm.account_name}).then(() => {
-      currentData.loginForm.accountPasswordLoginConfirmLoading = false
+      currentData.loginForm.loading = false
     })
   } else if (args.error_message) {
     ElMessage.error(`Login Failed, {${args.result}}, {${args.error_message}}.`)
     window.ipcRenderer.invoke('steam:cancelLogin', {account_name: currentData.loginForm.account_name}).then(() => {
-      currentData.loginForm.accountPasswordLoginConfirmLoading = false
+      currentData.loginForm.loading = false
     })
   } else {
     ElMessage.error(`Login Failed, Please Re-Try Later.`)
     window.ipcRenderer.invoke('steam:cancelLogin', {account_name: currentData.loginForm.account_name}).then(() => {
-      currentData.loginForm.accountPasswordLoginConfirmLoading = false
+      currentData.loginForm.loading = false
     })
   }
 })
 </script>
 
 <template>
-  <div class="container">
-    <el-header class="header-center">
-      <el-text size="large" style="font-weight: bold">Steam Login</el-text>
-    </el-header>
-    <el-main>
-      <el-form size="small" :model="currentData.loginForm" label-width="auto" label-position="top" ref="loginFormRef"
-               :rules="currentData.loginForm.rules" class="login-form">
-        <el-form-item prop="account_name" label="Account" v-if="currentData.loginForm.showAccountName">
-          <el-input v-model="currentData.loginForm.account_name"
-                    :readonly="currentData.loginForm.loginType==='ImportSda'">
-            <template #prefix>
-              <el-icon>
-                <UserFilled/>
-              </el-icon>
-            </template>
-          </el-input>
-        </el-form-item>
-        <el-form-item prop="password" label="Password" v-if="currentData.loginForm.showPassword">
-          <el-input v-model="currentData.loginForm.password" :type="currentData.loginForm.passwordInputType">
-            <template #prefix>
-              <el-icon v-if="currentData.loginForm.passwordLocked">
-                <Lock/>
-              </el-icon>
-              <el-icon v-if="!currentData.loginForm.passwordLocked">
-                <Unlock/>
-              </el-icon>
-            </template>
-            <template #suffix>
-              <el-icon v-if="currentData.loginForm.passwordLocked"
-                       @click="currentData.loginForm.passwordInputType='text';currentData.loginForm.passwordLocked=false">
-                <Hide/>
-              </el-icon>
-              <el-icon v-if="!currentData.loginForm.passwordLocked"
-                       @click="currentData.loginForm.passwordInputType='password';currentData.loginForm.passwordLocked=true">
-                <View/>
-              </el-icon>
-            </template>
-          </el-input>
-        </el-form-item>
-        <el-form-item prop="steamGuardCode" label="Steam Guard" v-if="currentData.loginForm.showSteamGuardCode">
-          <el-text size="small">
-            {{ currentData.loginForm.steamGuardCodeText }}
-          </el-text>
-          <el-input v-model="currentData.loginForm.steamGuardCode"/>
-        </el-form-item>
-        <el-form-item v-if="currentData.loginForm.showPassword && currentData.loginForm.showAccountName">
-          <el-button type="default" :loading="currentData.loginForm.accountPasswordLoginCancelLoading"
-                     @click="handleAccountPasswordLoginCancel">Cancel
-          </el-button>
-          <el-button type="default" :loading="currentData.loginForm.accountPasswordLoginConfirmLoading"
-                     @click="handleAccountPasswordLoginConfirm(loginFormRef)">Confirm
-          </el-button>
-        </el-form-item>
-        <el-form-item v-if="currentData.loginForm.showSteamGuardCode">
-          <el-button type="default" :loading="currentData.loginForm.steamGuardCodeCancelLoading"
-                     @click="handleSteamGuardCodeCancel">Cancel
-          </el-button>
-          <el-button type="default" :loading="currentData.loginForm.steamGuardCodeConfirmLoading"
-                     @click="handleSteamGuardCodeConfirm">Confirm
-          </el-button>
-        </el-form-item>
-      </el-form>
-    </el-main>
-  </div>
+  <Dialog :title="'Steam Login'" @cancel="handleCancel" @confirm="handleConfirm" :loading="currentData.loginForm.loading">
+    <el-form size="small" :model="currentData.loginForm" label-width="auto" label-position="top" ref="loginFormRef"
+             :rules="currentData.loginForm.rules" class="login-form">
+      <el-form-item prop="account_name" label="Account" v-if="currentData.loginForm.showAccountName">
+        <el-input v-model="currentData.loginForm.account_name"
+                  :readonly="currentData.loginForm.loginType==='ImportSda'">
+          <template #prefix>
+            <el-icon>
+              <UserFilled/>
+            </el-icon>
+          </template>
+        </el-input>
+      </el-form-item>
+      <el-form-item prop="password" label="Password" v-if="currentData.loginForm.showPassword">
+        <el-input v-model="currentData.loginForm.password" :type="currentData.loginForm.passwordInputType">
+          <template #prefix>
+            <el-icon v-if="currentData.loginForm.passwordLocked">
+              <Lock/>
+            </el-icon>
+            <el-icon v-if="!currentData.loginForm.passwordLocked">
+              <Unlock/>
+            </el-icon>
+          </template>
+          <template #suffix>
+            <el-icon v-if="currentData.loginForm.passwordLocked"
+                     @click="currentData.loginForm.passwordInputType='text';currentData.loginForm.passwordLocked=false">
+              <Hide/>
+            </el-icon>
+            <el-icon v-if="!currentData.loginForm.passwordLocked"
+                     @click="currentData.loginForm.passwordInputType='password';currentData.loginForm.passwordLocked=true">
+              <View/>
+            </el-icon>
+          </template>
+        </el-input>
+      </el-form-item>
+      <el-form-item prop="steamGuardCode" label="Steam Guard" v-if="currentData.loginForm.showSteamGuardCode">
+        <el-text size="small">
+          {{ currentData.loginForm.steamGuardCodeText }}
+        </el-text>
+        <el-input v-model="currentData.loginForm.steamGuardCode"/>
+      </el-form-item>
+    </el-form>
+  </Dialog>
 </template>
 
 <style scoped>
@@ -332,13 +325,6 @@ window.ipcRenderer.on('steam:message:login-status-changed', (event, args: SteamL
   --el-header-height: 40px;
   flex-shrink: 0;
   border-bottom: 1px solid #dcdfe6;
-}
-
-.header-center {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 100%;
 }
 
 .el-main {
