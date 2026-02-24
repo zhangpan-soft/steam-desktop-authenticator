@@ -21,7 +21,7 @@ ipcMainHandler
         console.log('readMaFile', args, event)
         let filepath = args.path
         if (!filepath && args.filename) {
-            filepath = path.join(settingsDb.get().maFilesDir, args.filename)
+            filepath = path.join(settingsDb.data.maFilesDir, args.filename)
         }
         return readMaFile(filepath, {passkey: args.passkey, iv: args.iv, salt: args.salt})
     })
@@ -41,11 +41,12 @@ ipcMainHandler
     })
     .handle('settings:get', async (event, args) => {
         console.log('settings:get', args, event)
-        return settingsDb.get()
+        return settingsDb.data
     })
     .handle('settings:set', async (event, args) => {
         console.log('settings:set', args, event)
-        settingsDb.set(args)
+        settingsDb.data = {...args}
+        settingsDb.update()
     })
     .handle('context:get', async (event, args) => {
         console.log('context:get', args, event)
@@ -54,7 +55,7 @@ ipcMainHandler
     .handle('context:set', async (event, args) => {
         console.log('context:set', args, event)
         if (args.passkey) {
-            const settings = settingsDb.get()
+            const settings = settingsDb.data
             if (!settings.encrypted){
                 settings.encrypted = true
                 if (settings.entries.length>0){

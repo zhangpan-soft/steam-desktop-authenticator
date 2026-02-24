@@ -4,9 +4,9 @@ import {readMaFile} from "../ma-file.ts";
 import path from "node:path";
 import steamLoginExecutor from "../steam/login.ts";
 import fs from "node:fs/promises";
-import {getSettingsDb, getSteamAccountDb} from "../db";
 import runtimeContext from "../utils/runtime-context.ts";
 import {EResult} from "steam-session";
+import {settingsDb, steamAccountDbs} from "../db";
 
 ipcMainHandler
     .handle('steam:login', async (event, args) => {
@@ -15,12 +15,11 @@ ipcMainHandler
         if (args.shared_secret) {
             loginOptions.steamGuardCode = await generateAuthCode(args.shared_secret)
         }
-        const settingsDb = await getSettingsDb()
         const settings = settingsDb.data
         if (settings.entries) {
             const item = settings.entries.find(s => s.account_name === args.account_name)
             if (item) {
-                const steamAccount = await getSteamAccountDb(args.account_name, runtimeContext.passkey)
+                const steamAccount = steamAccountDbs.db(args.account_name, runtimeContext.passkey)
                 loginOptions.steamGuardCode = await generateAuthCode(steamAccount.data.shared_secret)
             }
         }
@@ -73,7 +72,7 @@ ipcMainHandler
     })
     .handle('steam:getConfirmations', async (event, args) => {
         console.log('steamGetConfirmations', args, event)
-        const steamAccountDb = await getSteamAccountDb(args.account_name, runtimeContext.passkey)
+        const steamAccountDb = steamAccountDbs.db(args.account_name, runtimeContext.passkey)
         const response: SteamResponse<ConfirmationsResponse> = {eresult: EResult.Fail, status: 0}
         if (!steamAccountDb.data.Session) {
             response.eresult = EResult.AccessDenied
@@ -98,6 +97,7 @@ ipcMainHandler
                 return response
             } else {
                 steamAccountDb.data.Session = {...loginEvent.data} as SteamSession
+                steamAccountDb.update()
             }
         }
         return getConfirmations({
@@ -110,7 +110,7 @@ ipcMainHandler
     .handle('steam:token', async (event, args) => {
         console.log('steam:token', event, args)
         const {account_name} = {...args}
-        const steamAccountDb = await getSteamAccountDb(account_name, runtimeContext.passkey)
+        const steamAccountDb = steamAccountDbs.db(account_name, runtimeContext.passkey)
         const token = await generateAuthCode(steamAccountDb.data.shared_secret)
         const progress = (30 - (Date.now() / 1000 + runtimeContext.timeOffset) % 30) / 30 * 100
         return {
@@ -121,21 +121,20 @@ ipcMainHandler
     .handle('steam:account:get', async (event, args) => {
         console.log('steam:account:get', event, args)
         const {account_name} = {...args}
-        const steamAccountDb = await getSteamAccountDb(account_name, runtimeContext.passkey)
+        const steamAccountDb = steamAccountDbs.db(account_name, runtimeContext.passkey)
         return steamAccountDb.data
     })
     .handle('steam:account:set', async (event, args) => {
         console.log('steam:account:set', event, args)
         const steamAccount = {...args}
-        const steamAccountDb = await getSteamAccountDb(steamAccount.account_name, runtimeContext.passkey)
+        const steamAccountDb = steamAccountDbs.db(steamAccount.account_name, runtimeContext.passkey)
         steamAccountDb.data = {...steamAccountDb.data, ...steamAccount}
-        await steamAccountDb.write()
-        const settingDb = await getSettingsDb()
-        settingDb.data.entries.push({
+        steamAccountDb.update()
+        settingsDb.data.entries.push({
             steamid: steamAccountDb.data.Session?.SteamID as string,
             account_name: steamAccountDb.data.account_name as string
         })
-        await settingDb.write()
+        settingsDb.update()
         return true
     })
 

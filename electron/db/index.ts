@@ -28,22 +28,23 @@ function getDefaultSettings(): Settings {
 class SettingsDb {
     private db: LowSync<Settings>
 
+    data: Settings
+
     constructor() {
         this.db = JSONFileSyncPreset<Settings>(
             path.join(app.getPath('userData'), 'settings.json'),
             getDefaultSettings()
         )
         this.db.read()
+        this.data = this.db.data
     }
 
-    get() {
-        return {...this.db.data}
-    }
-
-    set(data: Partial<Settings>) {
-        this.db.data = {...this.db.data, ...data}
+    update(){
+        this.db.data = {...this.db.data, ...this.data}
         this.db.write()
+        this.data = this.db.data
     }
+
 }
 
 const settingsDb = new SettingsDb()
@@ -53,20 +54,20 @@ class SteamAccountDb {
     private passkey?: string
     private readonly adapter: SteamAccountAdapter
 
+    data: SteamAccount
+
     constructor(account_name: string, passkey?: string) {
         this.passkey = passkey
-        this.adapter = new SteamAccountAdapter(path.join(settingsDb.get().maFilesDir, `${account_name}.maFile`))
+        this.adapter = new SteamAccountAdapter(path.join(settingsDb.data.maFilesDir, `${account_name}.maFile`))
         this.db = new LowSync(this.adapter, {} as SteamAccount)
         this.db.read()
+        this.data = this.db.data
     }
 
-    get() {
-        return {...this.db.data}
-    }
-
-    set(data: Partial<SteamAccount>) {
-        this.db.data = {...this.db.data, ...data}
+    update(){
+        this.db.data = {...this.db.data, ...this.data}
         this.db.write()
+        this.data = this.db.data
     }
 
     setPasskey(passkey?: string){
@@ -77,6 +78,7 @@ class SteamAccountDb {
         this.adapter.passkey = this.passkey
         this.db.write()
         this.db.read()
+        this.data = this.db.data
     }
 }
 
@@ -169,15 +171,15 @@ class SteamAccountDbs {
         this.dbs = new Map<string, SteamAccountDb>()
     }
 
-    db(account_name: string, passkey?: string) {
+    db(account_name: string, passkey?: string): SteamAccountDb {
         if (this.dbs.has(account_name)) {
-            const db = this.dbs.get(account_name);
-            db?.setPasskey(passkey)
-            return db
+            const db: SteamAccountDb = this.dbs.get(account_name) as SteamAccountDb;
+            db.setPasskey(passkey)
+            return db as SteamAccountDb
         }
         const db = new SteamAccountDb(account_name, passkey)
         this.dbs.set(account_name, db)
-        return db
+        return db as SteamAccountDb
     }
 }
 
