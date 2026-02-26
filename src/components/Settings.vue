@@ -1,62 +1,41 @@
 <script setup lang="ts">
-import {onMounted, reactive, toRaw} from "vue";
-import {ElMessage} from "element-plus";
-import Dialog from "../../components/Dialog.vue";
 
+import CustomDialog from "./CustomDialog.vue";
+import {onMounted, reactive, toRaw} from "vue";
+
+const show = defineModel<boolean>('show', {default: false})
 const currentData = reactive<{
   settings: Settings,
   loading: boolean
 }>({
-  settings: {
-    encrypted: false,
-    first_run: true,
-    periodic_checking: false,
-    periodic_checking_interval: 60,
-    periodic_checking_checkall: false,
-    auto_confirm_market_transactions: false,
-    auto_confirm_trades: false,
-    maFilesDir: '',
-    entries: [],
-    proxy: '',
-    timeout: 3000
-  },
+  settings: {} as Settings,
   loading: false
 })
 
-function handleCancel() {
-  currentData.loading = true
-  window.ipcRenderer.invoke('close-window', {
-    hash: '/system/settings'
-  }).finally(()=>currentData.loading = false);
+const events = {
+  handleCancel() {
+    show.value = false
+  },
+  async handleConfirm() {
+    await window.ipcRenderer.invoke('settings:set', {...toRaw<Settings>(currentData.settings)})
+    show.value = false
+  }
 }
 
-function handleSave() {
-  currentData.loading = true
-  const _  = toRaw<Settings>(currentData.settings)
-  const args = {..._}
-  window.ipcRenderer.invoke('settings:set', args)
-      .then(() => {
-        ElMessage.success('Save Success')
-      })
-      .catch(() => {
-        ElMessage.error('Save Failed')
-      })
-      .then(() => window.ipcRenderer.invoke('close-window', {hash: '/system/settings'}))
-      .finally(()=>currentData.loading=false)
-}
-
-onMounted(() => {
-  currentData.loading = true
-  window.ipcRenderer.invoke('settings:get',).then((res: Settings) => {
-    currentData.settings = {...res}
-  }).finally(()=>{
-    currentData.loading = false
-  })
+onMounted(async () => {
+  const settings: Settings = await window.ipcRenderer.invoke('settings:get',)
+  currentData.settings = {...settings}
 })
+
 </script>
 
 <template>
-  <Dialog :title="'Settings'" @cancel="handleCancel" @confirm="handleSave" :loading="currentData.loading" :confirm-button-text="'Save'">
+  <CustomDialog v-model:show="show"
+                :title="'Settings'"
+                @confirm="events.handleConfirm"
+                @cancel="events.handleCancel"
+                :confirm-button-text="'Save'"
+  >
     <el-row justify="start" align="middle">
       <el-checkbox v-model="currentData.settings.periodic_checking" size="small"/>
       <el-text size="small" class="settings-text"
@@ -118,7 +97,7 @@ onMounted(() => {
         Timeout of requests in milliseconds
       </el-text>
     </el-row>
-  </Dialog>
+  </CustomDialog>
 </template>
 
 <style scoped>

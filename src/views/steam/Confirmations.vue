@@ -3,7 +3,7 @@ import {onMounted, reactive} from "vue";
 import EResult from "../../utils/EResult.ts";
 import {ElMessage} from "element-plus";
 import {useRoute} from "vue-router";
-import Dialog from "../../components/Dialog.vue";
+import CustomContainer from "../../components/CustomContainer.vue";
 
 const data = reactive<{
   list: Confirmation[]
@@ -13,25 +13,24 @@ const data = reactive<{
 
 const route = useRoute()
 
-onMounted(() => {
+onMounted(async () => {
   console.log('onMounted','1222222222222222222')
   const {query} = {...route}
-  window.ipcRenderer.invoke('steam:getConfirmations',{account_name: query.account_name})
-      .then((res: SteamResponse<ConfirmationsResponse>) => {
-        if (res.eresult === EResult.OK) {
-          data.list = res.response?.conf || []
-        } else {
-          ElMessage.error(`Failed to get confirmations.${res.message || ''}`)
-        }
-      })
-      .catch(err=>{
-        ElMessage.error(`Failed to get confirmations.${err.message || err || ''}`)
-      })
+  try {
+    const res: SteamResponse<ConfirmationsResponse> = await window.ipcRenderer.invoke('steam:getConfirmations',{account_name: query.account_name})
+    if (res.eresult === EResult.OK) {
+      data.list = res.response?.conf || []
+    } else {
+      ElMessage.error(`Failed to get confirmations.${res.message || ''}`)
+    }
+  }catch (err: any) {
+    ElMessage.error(`Failed to get confirmations.${err.message || err || ''}`)
+  }
 })
 </script>
 
 <template>
-  <Dialog :title="'Confirmations'" :show-cancel-button="false" :show-confirm-button="false">
+  <CustomContainer :title="'Confirmations'" :show-cancel-button="false" :show-confirm-button="false">
     <div class="list-section">
       <el-card v-if="data.list.length===0" class="empty-card">
         <el-empty description="No Confirmations"/>
@@ -61,7 +60,7 @@ onMounted(() => {
         </el-card>
       </div>
     </div>
-  </Dialog>
+  </CustomContainer>
 </template>
 
 <style scoped>

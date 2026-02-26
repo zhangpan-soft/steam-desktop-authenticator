@@ -310,7 +310,7 @@ export class GotHttpApiRequest implements IHttpUri, IHttpBody, IHttpParam, IHttp
             throwHttpErrors: false,
             responseType: 'text',
             // 如果配置中有 timeout 则添加
-            ...(this._config.timeout ? { timeout: { request: this._config.timeout } } : {}),
+            ...(this._config.timeout ? { timeout: { request: Number(this._config.timeout) } } : {}),
         };
 
         // 4. 处理 Body 互斥逻辑

@@ -34,19 +34,33 @@ type ElectronMessageChannel =
     | 'close-window'
     | 'settings:get'
     | 'settings:set'
+    | 'settings:message:change'
     | 'context:get'
     | 'context:set'
     | SteamMessageChannel
+    | DatabaseMessageChannel
 
 type SteamMessageChannel =
     'steam:login'
+    | 'steam:RefreshLogin'
     | 'steam:submitSteamGuard'
     | 'steam:cancelLogin'
     | 'steam:message:login-status-changed'
     | 'steam:getConfirmations'
     | 'steam:token'
+    | 'steam:generateCode'
     | 'steam:account:get'
     | 'steam:account:set'
+    | 'steam:MobileDevice:RegisterMobileDevice'
+    | 'steam:TwoFactor:AddAuthenticator'
+    | 'steam:TwoFactor:FinalizeAddAuthenticator'
+    | 'steam:TwoFactor:RemoveAuthenticator'
+    | 'steam:TwoFactor:RemoveAuthenticatorViaChallengeContinue'
+    | 'steam:TwoFactor:RemoveAuthenticatorViaChallengeStart'
+    | 'steam:TwoFactor:hasPhoneAttached'
+    | 'steam:TwoFactor:QueryStatus'
+
+type DatabaseMessageChannel = 'database:steamAccount:get'
 
 type WindowHashType = '/' | '/steam/confirmations' | '/steam/steamLogin' | '/system/settings'
 
@@ -168,7 +182,7 @@ interface IHttpUri {
 
 interface EntryType {
     steamid: string,
-    account_name: string
+    account_name: string,
 }
 
 interface Settings {

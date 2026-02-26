@@ -1,10 +1,8 @@
 import path from "node:path";
 import {app} from "electron";
-import {JSONFileSyncPreset} from "lowdb/node";
+import {JSONFileSyncPreset, TextFileSync} from "lowdb/node";
 import {LowSync, SyncAdapter} from "lowdb";
-import * as fs from "node:fs/promises";
 import * as crypto from "node:crypto";
-import {readFileSync, writeFileSync} from 'node:fs'
 
 // --- 1. Settings 定义 ---
 // 将 path 计算移出顶层，防止 app.ready 前调用崩溃
@@ -39,7 +37,7 @@ class SettingsDb {
         this.data = this.db.data
     }
 
-    update(){
+    update() {
         this.db.data = {...this.db.data, ...this.data}
         this.db.write()
         this.data = this.db.data
@@ -56,22 +54,23 @@ class SteamAccountDb {
 
     data: SteamAccount
 
-    constructor(account_name: string, passkey?: string) {
+    constructor(filepath: string,
+                passkey?: string) {
         this.passkey = passkey
-        this.adapter = new SteamAccountAdapter(path.join(settingsDb.data.maFilesDir, `${account_name}.maFile`))
+        this.adapter = new SteamAccountAdapter(filepath, passkey)
         this.db = new LowSync(this.adapter, {} as SteamAccount)
         this.db.read()
         this.data = this.db.data
     }
 
-    update(){
+    update() {
         this.db.data = {...this.db.data, ...this.data}
         this.db.write()
         this.data = this.db.data
     }
 
-    setPasskey(passkey?: string){
-        if (this.passkey === passkey){
+    setPasskey(passkey?: string) {
+        if (this.passkey === passkey) {
             return
         }
         this.passkey = passkey
@@ -83,7 +82,6 @@ class SteamAccountDb {
 }
 
 class SteamAccountAdapter implements SyncAdapter<SteamAccount> {
-    private readonly filepath: string
     public passkey?: string
 
     private readonly ALGORITHM = 'aes-256-gcm';
@@ -91,54 +89,53 @@ class SteamAccountAdapter implements SyncAdapter<SteamAccount> {
     private readonly IV_LEN = 12;
     private readonly KEY_LEN = 32;
 
+    private readonly delegate: TextFileSync
+
     constructor(filepath: string, passkey?: string) {
-        this.filepath = filepath;
         this.passkey = passkey
+        this.delegate = new TextFileSync(filepath)
     }
 
     read() {
-        try {
-            const fileContent = readFileSync(this.filepath, 'utf8');
-
-            // 如果没有设置密码，尝试直接按 JSON 解析
-            // 场景：用户从未加密状态切换过来，或者文件本身未加密
-            if (!this.passkey) {
-                return JSON.parse(fileContent);
-            }
-
-            // 简单校验格式，避免对非加密文件强行解密报错
-            const splits = fileContent.split('/')
-            if (splits.length !== 4) {
-                // 可能是普通 JSON 文件，尝试直接解析，如果失败则抛出解密错
-                return JSON.parse(fileContent);
-            }
-
-            const iv = Buffer.from(splits[0], 'hex');
-            const salt = Buffer.from(splits[1], 'hex');
-            const tag = Buffer.from(splits[2], 'hex');
-            const encryptedText = splits[3];
-
-            // 关键：使用文件中的 Salt 重新派生 Key
-            const key = crypto.scryptSync(this.passkey, salt, this.KEY_LEN);
-
-            const decipher = crypto.createDecipheriv(this.ALGORITHM, key, iv);
-            decipher.setAuthTag(tag)
-
-            // ✅ update 的输入是 'hex' (对应 write 时的 output encoding)
-            let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
-            decrypted += decipher.final('utf8');
-
-            return JSON.parse(decrypted)
-        } catch (e: any) {
-            if (e.code === 'ENOENT') return null;
-            // 区分是解密失败还是 JSON 解析失败
-            throw new Error(`Failed to load database: ${e.message}`);
+        const fileContent = this.delegate.read()
+        if (!fileContent){
+            return null
         }
+
+        // 如果没有设置密码，尝试直接按 JSON 解析
+        // 场景：用户从未加密状态切换过来，或者文件本身未加密
+        if (!this.passkey) {
+            return JSON.parse(fileContent);
+        }
+
+        // 简单校验格式，避免对非加密文件强行解密报错
+        const splits = fileContent.split('/')
+        if (splits.length !== 4) {
+            // 可能是普通 JSON 文件，尝试直接解析，如果失败则抛出解密错
+            return JSON.parse(fileContent);
+        }
+
+        const iv = Buffer.from(splits[0], 'hex');
+        const salt = Buffer.from(splits[1], 'hex');
+        const tag = Buffer.from(splits[2], 'hex');
+        const encryptedText = splits[3];
+
+        // 关键：使用文件中的 Salt 重新派生 Key
+        const key = crypto.scryptSync(this.passkey, salt, this.KEY_LEN);
+
+        const decipher = crypto.createDecipheriv(this.ALGORITHM, key, iv);
+        decipher.setAuthTag(tag)
+
+        // ✅ update 的输入是 'hex' (对应 write 时的 output encoding)
+        let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
+        decrypted += decipher.final('utf8');
+
+        return JSON.parse(decrypted)
     }
 
     write(data: SteamAccount) {
         if (!this.passkey) {
-            writeFileSync(this.filepath, JSON.stringify(data), 'utf8');
+            this.delegate.write(JSON.stringify(data))
             return;
         }
 
@@ -156,11 +153,7 @@ class SteamAccountAdapter implements SyncAdapter<SteamAccount> {
         const tag = cipher.getAuthTag().toString('hex');
 
         // 格式：IV / SALT / TAG / CONTENT
-        return fs.writeFile(
-            this.filepath,
-            `${iv.toString('hex')}/${salt.toString('hex')}/${tag}/${encrypted}`,
-            'utf8'
-        );
+        this.delegate.write(`${iv.toString('hex')}/${salt.toString('hex')}/${tag}/${encrypted}`)
     }
 }
 
@@ -177,7 +170,7 @@ class SteamAccountDbs {
             db.setPasskey(passkey)
             return db as SteamAccountDb
         }
-        const db = new SteamAccountDb(account_name, passkey)
+        const db = new SteamAccountDb(path.join(settingsDb.data.maFilesDir, `${account_name}.maFile`), passkey)
         this.dbs.set(account_name, db)
         return db as SteamAccountDb
     }

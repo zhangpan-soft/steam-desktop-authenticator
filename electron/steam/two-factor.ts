@@ -108,7 +108,7 @@ export async function AddAuthenticator(access_token: string,
         .catch(reason => parseErrorResult(reason))
 }
 
-export async function finalizeAddAuthenticator(access_token: string,
+export async function FinalizeAddAuthenticator(access_token: string,
                                                shared_secret: string,
                                                smsCode: string):Promise<SteamResponse<FinalizeAuthenticatorResponse>> {
     const code = await generateAuthCode(shared_secret)

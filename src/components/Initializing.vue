@@ -1,0 +1,50 @@
+<script setup lang="ts">
+
+import CustomDialog from "./CustomDialog.vue";
+import {ElMessage} from "element-plus";
+
+const show = defineModel<boolean>('show', {default: false})
+
+const events = {
+  async handleDefault(){
+    await window.ipcRenderer.invoke('settings:set',{first_run: false})
+    show.value = false
+  },
+  async handleCustom(){
+    const res = await window.ipcRenderer.invoke('showOpenDialog', {
+      properties: ['openDirectory']
+    })
+    if (res.canceled) {
+      ElMessage.warning('Canceled')
+      return
+    }
+    const filepath = res.filePaths[0]
+    await window.ipcRenderer.invoke('settings:set', {maFilesDir: filepath, first_run: false})
+    ElMessage.success('Success')
+    show.value = false
+  }
+}
+</script>
+
+<template>
+  <CustomDialog :title="'Initializing'"
+                v-model:show="show"
+                :show-cancel-button="false"
+                :show-confirm-button="false">
+    <el-row>
+      <el-text type="info" size="small">
+        Please Select the MaFiles Folder
+      </el-text>
+    </el-row>
+    <el-row>
+      <el-button type="default" style="width: 100%" @click="events.handleDefault">Default</el-button>
+    </el-row>
+    <el-row>
+      <el-button type="default" style="width: 100%" @click="events.handleCustom">Custom</el-button>
+    </el-row>
+  </CustomDialog>
+</template>
+
+<style scoped>
+
+</style>

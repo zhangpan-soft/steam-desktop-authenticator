@@ -25,6 +25,40 @@ ipcMainHandler
         }
         return readMaFile(filepath, {passkey: args.passkey, iv: args.iv, salt: args.salt})
     })
+    .handle('importMaFile', async (event, args) => {
+        console.log('importMaFile', args, event)
+        if (args.passkey) {
+            const fileExists = async (filepath: string) => {
+                return await fs.access(filepath).then(() => {
+                    return true
+                }).catch(() => {
+                    return false
+                })
+            }
+            let manifest_path = path.join(path.dirname(args.path), 'manifest.json')
+            let exists = await fileExists(manifest_path);
+            if (!exists) {
+                manifest_path = path.join(path.dirname(args.path), 'settings.json')
+                exists = await fileExists(manifest_path)
+            }
+            if (!exists) {
+                throw new Error('manifest.json not found')
+            }
+            const manifestText = await fs.readFile(manifest_path, 'utf8')
+            const manifest = JSON.parse(manifestText)
+            if (!manifest.entries || manifest.entries.length == 0) {
+                throw new Error('manifest.json entries is empty')
+            }
+            const maFileParse = path.parse(args.path)
+            const acc = manifest.entries.find((value: any) => value.filename === maFileParse.name + '.' + maFileParse.ext)
+            if (!acc) {
+                throw new Error('manifest.json entries is empty')
+            }
+            return readMaFile(args.path, {passkey: args.passkey, iv: acc.encryption_iv, salt: acc.encryption_salt})
+        } else {
+            return readMaFile(args.path)
+        }
+    })
     .handle('open-window', async (event, args) => {
         console.log('open-window', args, event)
         const {uri, options} = {...args}
@@ -47,6 +81,7 @@ ipcMainHandler
         console.log('settings:set', args, event)
         settingsDb.data = {...args}
         settingsDb.update()
+        windowManager.sendEvent('/', 'settings:message:change', settingsDb.data)
     })
     .handle('context:get', async (event, args) => {
         console.log('context:get', args, event)

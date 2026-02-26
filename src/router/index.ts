@@ -12,31 +12,6 @@ const router = createRouter({
       path: '/steam/confirmations',
       name: 'confirmations',
       component: import('../views/steam/Confirmations.vue'),
-    },
-    {
-      path: '/steam/steamLogin',
-      name: 'steamLogin',
-      component: import('../views/steam/SteamLogin.vue')
-    },
-    {
-      path: '/system/settings',
-      name: 'Settings',
-      component: import('../views/system/Settings.vue')
-    },
-    {
-      path: '/system/initializing',
-      name: 'Initializing',
-      component: import('../views/system/Initializing.vue')
-    },
-    {
-      path: '/system/unlock',
-      name: 'Unlock',
-      component: import('../views/system/Unlock.vue')
-    },
-    {
-      path: '/steam/importAccount',
-      name: 'ImportAccount',
-      component: import('../views/steam/ImportAccount.vue')
     }
   ]
 })
