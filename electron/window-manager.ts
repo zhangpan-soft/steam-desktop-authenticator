@@ -37,7 +37,7 @@ class WindowManager {
         if (this._main) return; // 防止重复初始化
 
         this._main = this._createWindow({
-            icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
+            icon: path.join(process.env.VITE_PUBLIC, 'Steam.svg'),
             width: 420,   // 改窄，模仿手机/工具宽度
             height: 600,  // 高度适中
             useContentSize: true, // 确保内容区域有这么大

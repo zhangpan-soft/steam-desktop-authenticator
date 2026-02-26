@@ -1,11 +1,12 @@
 {
   "name": "steam-desktop-authenticator",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc && vite build && electron-builder",
+    "build": "vue-tsc && vite build && npm run build:icons && electron-builder",
+    "build:icons": "electron-icon-builder --input=./public/Steam.svg --output=build --flatten",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -26,6 +27,7 @@
     "@vitejs/plugin-vue": "^5.0.4",
     "electron": "^40.1.0",
     "electron-builder": "^24.13.3",
+    "electron-icon-builder": "^2.0.1",
     "typescript": "^5.2.2",
     "vite": "^5.1.6",
     "vite-plugin-electron": "^0.28.6",
