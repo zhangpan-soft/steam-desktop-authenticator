@@ -8,6 +8,11 @@
     "output": "release/${version}",
     "buildResources": "build"
   },
+  "publish": {
+    "provider": "github",
+    "owner": "zhangpan-soft",
+    "repo": "steam-desktop-authenticator"
+  },
   "files": [
     "dist",
     "dist-electron"

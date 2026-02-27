@@ -5,6 +5,10 @@
   "description": "A desktop authenticator for Steam that's written in Electron and Vue.",
   "author": "zp99992050@gmail.com",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zhangpan-soft/steam-desktop-authenticator.git"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc && vite build && npm run build:icons && electron-builder",
