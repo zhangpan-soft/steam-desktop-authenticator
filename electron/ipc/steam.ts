@@ -1,5 +1,5 @@
 import ipcMainHandler from "./index.ts";
-import {generateAuthCode, getConfirmations} from "../steam/steam-community.ts";
+import {generateAuthCode, getConfirmations, acceptConfirmation, cancelConfirmation} from "../steam/steam-community.ts";
 import steamLoginExecutor from "../steam/login.ts";
 import runtimeContext from "../utils/runtime-context.ts";
 import {EResult} from "steam-session";
@@ -96,6 +96,31 @@ ipcMainHandler
             cookies: steamAccountDb.data.Session.cookies
         })
     })
+    .handle('steam:confirmations:respond', async (event, args) => {
+        console.log('steam:confirmations:respond', args, event)
+        const { account_name, confId, confKey, action } = args
+        const steamAccountDb = steamAccountDbs.db(account_name, runtimeContext.passkey)
+        
+        if (!steamAccountDb.data.Session) {
+            return { eresult: EResult.Fail, message: 'Session not found', status: 0 }
+        }
+
+        const options = {
+            identitySecret: steamAccountDb.data.identity_secret,
+            deviceid: steamAccountDb.data.device_id,
+            steamid: steamAccountDb.data.Session.SteamID,
+            cookies: steamAccountDb.data.Session.cookies
+        }
+
+        // 构造一个只包含必要字段的 Confirmation 对象
+        const confirmation = { id: confId, nonce: confKey } as Confirmation
+
+        if (action === 'accept') {
+            return acceptConfirmation(options, confirmation)
+        } else {
+            return cancelConfirmation(options, confirmation)
+        }
+    })
     .handle('steam:token', async (event, args) => {
         console.log('steam:token', event, args)
         const {account_name} = {...args}
@@ -168,4 +193,3 @@ ipcMainHandler
         const steamSession:SteamSession = {...args}
         return QueryStatus(steamSession.access_token)
     })
-

@@ -59,6 +59,7 @@ type SteamMessageChannel =
     | 'steam:TwoFactor:RemoveAuthenticatorViaChallengeStart'
     | 'steam:TwoFactor:hasPhoneAttached'
     | 'steam:TwoFactor:QueryStatus'
+    | 'steam:confirmations:respond'
 
 type DatabaseMessageChannel = 'database:steamAccount:get'
 
@@ -351,4 +352,3 @@ interface ConfirmationAjaxOpResponse {
     success: boolean
     message: string
 }
-

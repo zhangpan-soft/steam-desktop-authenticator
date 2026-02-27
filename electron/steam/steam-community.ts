@@ -127,7 +127,7 @@ async function generateConfirmationQueryParamsAsNVC(options: {
         a: options.a,
         k: k,
         t: time + '',
-        m: 'react',
+        m: 'android',
         tag: options.tag
     }
 }
