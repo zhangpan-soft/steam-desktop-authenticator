@@ -12,6 +12,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc && vite build && npm run build:icons && electron-builder",
+    "release": "vue-tsc && vite build && npm run build:icons && electron-builder --publish always",
     "build:icons": "electron-icon-builder --input=./public/icon.png --output=build --flatten",
     "preview": "vite preview"
   },
