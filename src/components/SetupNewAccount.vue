@@ -3,7 +3,7 @@
 import {reactive} from "vue";
 import SteamLogin from "./SteamLogin.vue";
 import EResult from "../utils/EResult.ts";
-import {ElMessage, ElMessageBox} from "element-plus";
+import {ElLoading, ElMessage, ElMessageBox} from "element-plus";
 
 const currentData = reactive<{
   steamLoginModel: boolean
@@ -17,6 +17,11 @@ const handleSetupNewAccount = () => {
 
 const handleNewAccountLoginSuccess = async (session: SteamSession) => {
   console.log(session)
+  const loadingInstance = ElLoading.service({
+    lock: true,
+    text: 'Setting up new account...',
+    background: 'rgba(0, 0, 0, 0.7)',
+  })
   try {
     // 判断是否绑定了手机号
     await hasPhoneAttached(session)
@@ -48,6 +53,8 @@ const handleNewAccountLoginSuccess = async (session: SteamSession) => {
 
   } catch (e: any) {
     ElMessage.error(e.message)
+  } finally {
+    loadingInstance.close()
   }
 }
 

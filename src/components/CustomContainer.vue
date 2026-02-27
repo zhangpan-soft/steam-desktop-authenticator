@@ -4,6 +4,7 @@
  * 作为一个通用的弹窗外壳，负责布局(Header/Footer)和加载状态
  * 中间的内容通过 <slot> 由父组件传入
  */
+import {ElementLoadingSvg} from "../utils/icons.ts";
 defineProps({
   title: {
     type: String,
@@ -34,7 +35,12 @@ defineEmits(['cancel', 'confirm'])
 </script>
 
 <template>
-  <el-container v-loading="loading" class="dialog-container">
+  <el-container
+      v-loading="loading"
+      :element-loading-svg="ElementLoadingSvg"
+      element-loading-svg-view-box="0, 0, 24, 24"
+      class="dialog-container"
+  >
     <el-header class="header-center">
       <el-text size="large" class="title">
         {{ title }}
@@ -81,6 +87,7 @@ defineEmits(['cancel', 'confirm'])
   justify-content: center;
   align-items: center;
   padding: 5px;
+  border-bottom: 1px solid var(--el-border-color-lighter);
 }
 .dialog-content {
   /* 可以根据需要添加一些默认内边距，或者留给父组件控制 */
@@ -88,5 +95,6 @@ defineEmits(['cancel', 'confirm'])
 }
 .footer{
   padding: 5px;
+  border-top: 1px solid var(--el-border-color-lighter);
 }
 </style>

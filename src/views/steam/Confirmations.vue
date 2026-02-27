@@ -1,23 +1,25 @@
 <script setup lang="ts">
-import {onMounted, reactive} from "vue";
+import {onMounted, reactive, watch} from "vue";
 import EResult from "../../utils/EResult.ts";
 import {ElMessage} from "element-plus";
 import {useRoute} from "vue-router";
 import CustomContainer from "../../components/CustomContainer.vue";
 
 const data = reactive<{
+  loading: boolean
   list: Confirmation[]
 }>({
+  loading: false,
   list: []
 })
 
 const route = useRoute()
 
-onMounted(async () => {
-  console.log('onMounted','1222222222222222222')
-  const {query} = {...route}
+const fetchConfirmations = async () => {
+  data.loading = true
+  const account_name = route.query.account_name
   try {
-    const res: SteamResponse<ConfirmationsResponse> = await window.ipcRenderer.invoke('steam:getConfirmations',{account_name: query.account_name})
+    const res: SteamResponse<ConfirmationsResponse> = await window.ipcRenderer.invoke('steam:getConfirmations',{account_name})
     if (res.eresult === EResult.OK) {
       data.list = res.response?.conf || []
     } else {
@@ -25,12 +27,22 @@ onMounted(async () => {
     }
   }catch (err: any) {
     ElMessage.error(`Failed to get confirmations.${err.message || err || ''}`)
+  } finally {
+    data.loading = false
+  }
+}
+
+onMounted(fetchConfirmations)
+
+watch(() => route.query.account_name, (newVal) => {
+  if (newVal) {
+    fetchConfirmations()
   }
 })
 </script>
 
 <template>
-  <CustomContainer :title="'Confirmations'" :show-cancel-button="false" :show-confirm-button="false">
+  <CustomContainer :title="'Confirmations'" :loading="data.loading" :show-cancel-button="false" :show-confirm-button="false">
     <div class="list-section">
       <el-card v-if="data.list.length===0" class="empty-card">
         <el-empty description="No Confirmations"/>

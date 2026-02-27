@@ -2,6 +2,7 @@
 
 import CustomDialog from "./CustomDialog.vue";
 import {onMounted, reactive, toRaw} from "vue";
+import {Setting} from '@element-plus/icons-vue'
 
 const show = defineModel<boolean>('show', {default: false})
 const currentData = reactive<{
@@ -17,8 +18,13 @@ const events = {
     show.value = false
   },
   async handleConfirm() {
-    await window.ipcRenderer.invoke('settings:set', {...toRaw<Settings>(currentData.settings)})
-    show.value = false
+    currentData.loading = true
+    try {
+      await window.ipcRenderer.invoke('settings:set', {...toRaw<Settings>(currentData.settings)})
+      show.value = false
+    } finally {
+      currentData.loading = false
+    }
   }
 }
 
@@ -32,6 +38,8 @@ onMounted(async () => {
 <template>
   <CustomDialog v-model:show="show"
                 :title="'Settings'"
+                :icon="Setting"
+                :loading="currentData.loading"
                 @confirm="events.handleConfirm"
                 @cancel="events.handleCancel"
                 :confirm-button-text="'Save'"

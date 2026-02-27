@@ -139,7 +139,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <CustomDialog :title="'Import Account'"
+  <CustomDialog :title="'Steam Login'"
                 :loading="currentData.loading"
                 v-model:show="show"
                 @cancel="events.handleCancel"

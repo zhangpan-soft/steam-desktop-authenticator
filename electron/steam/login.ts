@@ -248,7 +248,7 @@ class SteamLoginExecutor {
     private _sendLoginMessage(payload: SteamLoginEvent) {
         // 统一通过 IPC 发送给渲染进程
         // 渲染进程通过 payload.account_name 来判断更新 UI 上的哪个卡片
-        windowManager.sendEvent('/steam/steamLogin', 'steam:message:login-status-changed', {...payload})
+        windowManager.sendEvent('/', 'steam:message:login-status-changed', {...payload})
     }
 }
 

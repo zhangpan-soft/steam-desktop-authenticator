@@ -23,11 +23,14 @@ const currentData = reactive<{
 
 const events = {
   async handleConfirm() {
+    currentData.loading = true
     try {
       await window.ipcRenderer.invoke('context:set', {passkey: currentData.passkey})
       show.value = false
     } catch (e: any) {
       ElMessage.error(e.message)
+    } finally {
+      currentData.loading = false
     }
   },
   handleCancel() {

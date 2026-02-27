@@ -62,7 +62,7 @@ type SteamMessageChannel =
 
 type DatabaseMessageChannel = 'database:steamAccount:get'
 
-type WindowHashType = '/' | '/steam/confirmations' | '/steam/steamLogin' | '/system/settings'
+type WindowHashType = '/' | '/steam/confirmations'
 
 type WindowUri = {
     hash: WindowHashType
@@ -328,6 +328,16 @@ interface Confirmation {
     headline: string
     summary: string[]
     warn: any
+}
+
+enum ConfirmationType {
+    UNKNOWN = 0,
+    OTHER = 1,
+    TRADE = 2,
+    MARKET = 3,
+    ACCOUNT = 4,
+    PHONE = 5,
+    RECOVERY = 6
 }
 
 interface ConfirmationOptions {

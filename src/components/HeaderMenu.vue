@@ -36,6 +36,7 @@ const handleLoginAgain = async ()=>{
     ElMessage.warning('No account by selected')
     return
   }
+  currentData.loginModelShow = true
 }
 const handleLoginSuccess = async (session:SteamSession)=>{
   console.log(session)
