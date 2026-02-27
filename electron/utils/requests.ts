@@ -1,6 +1,7 @@
 import got, {Response, Method, OptionsInit} from 'got';
 import { HttpProxyAgent, HttpsProxyAgent } from 'hpagent';
-import {SocksProxyAgent} from "socks-proxy-agent"; // 用于处理代理
+import {SocksProxyAgent} from "socks-proxy-agent";
+import * as querystring from "node:querystring"; // 用于处理代理
 
 // ---------------------------------------------------------
 // 1. 响应体实现 (GotHttpResponse)
@@ -309,7 +310,7 @@ export class GotHttpApiRequest implements IHttpUri, IHttpBody, IHttpParam, IHttp
             throwHttpErrors: false,
             responseType: 'text',
             // 如果配置中有 timeout 则添加
-            ...(this._config.timeout ? { timeout: { request: this._config.timeout } } : {}),
+            ...(this._config.timeout ? { timeout: { request: Number(this._config.timeout) } } : {}),
         };
 
         // 4. 处理 Body 互斥逻辑
@@ -363,10 +364,11 @@ export class GotHttpApiRequest implements IHttpUri, IHttpBody, IHttpParam, IHttp
 
         // 6. 发送请求
         try {
-            console.log('gotRequest', this._url, options)
+            console.log('gotRequest', this._url, querystring)
             const response = await got(this._url, options);
-            console.log('got response', response);
-            return new GotHttpResponse(response as Response<string>);
+            const _ = new GotHttpResponse(response as Response<string>);
+            console.log('gotResponse',_.getCode(),_.getHeaders(),_.getCookies(),_.getRequestUrls(),_.getText())
+            return _
         } catch (error: any) {
             console.error('Got Request Error:', error);
             throw error;

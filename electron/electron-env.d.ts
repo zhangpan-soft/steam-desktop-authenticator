@@ -21,12 +21,56 @@ declare namespace NodeJS {
     }
 }
 
-type ElectronMessageChannel = 'showOpenDialog' | 'readFile' | 'readMaFile' | 'saveMaFile' |'store:get-initial'
-    | 'store:renderer-update' | 'store:main-update' | 'main-process-message' | 'importMaFile'
+type ElectronMessageChannel =
+    'showOpenDialog'
+    | 'readFile'
+    | 'readMaFile'
+    | 'store:get-initial'
+    | 'store:renderer-update'
+    | 'store:main-update'
+    | 'main-process-message'
+    | 'importMaFile'
+    | 'open-window'
+    | 'close-window'
+    | 'settings:get'
+    | 'settings:set'
+    | 'settings:message:change'
+    | 'context:get'
+    | 'context:set'
     | SteamMessageChannel
+    | DatabaseMessageChannel
 
-type SteamMessageChannel = 'steam:login'
-    | 'steam:submitSteamGuard' | 'steam:cancelLogin' | 'steam:message:login-status-changed'
+type SteamMessageChannel =
+    'steam:login'
+    | 'steam:RefreshLogin'
+    | 'steam:submitSteamGuard'
+    | 'steam:cancelLogin'
+    | 'steam:message:login-status-changed'
+    | 'steam:getConfirmations'
+    | 'steam:token'
+    | 'steam:generateCode'
+    | 'steam:account:get'
+    | 'steam:account:set'
+    | 'steam:MobileDevice:RegisterMobileDevice'
+    | 'steam:TwoFactor:AddAuthenticator'
+    | 'steam:TwoFactor:FinalizeAddAuthenticator'
+    | 'steam:TwoFactor:RemoveAuthenticator'
+    | 'steam:TwoFactor:RemoveAuthenticatorViaChallengeContinue'
+    | 'steam:TwoFactor:RemoveAuthenticatorViaChallengeStart'
+    | 'steam:TwoFactor:hasPhoneAttached'
+    | 'steam:TwoFactor:QueryStatus'
+    | 'steam:confirmations:respond'
+
+type DatabaseMessageChannel = 'database:steamAccount:get'
+
+type WindowHashType = '/' | '/steam/confirmations'
+
+type WindowUri = {
+    hash: WindowHashType
+    query?: Record<string, string>
+}
+
+type SteamLoginType = 'NewAccount' | 'ImportSda' | 'RefreshToken' | 'ReLogin'
 
 // Used in Renderer process, expose in `preload.ts`
 interface Window {
@@ -36,13 +80,6 @@ interface Window {
         send(channel: ElectronMessageChannel, ...args: any[]): void
         invoke(channel: ElectronMessageChannel, ...args: any[]): Promise<any>
     }
-    store: {
-        getInitialState: () => Promise<GlobalState>;
-        // 发送更新：指定 scope (settings/runtime), key, value
-        syncSet: (scope: UpdateScope, path: string, value: any) => void;
-        onSyncUpdate: (callback: (scope: UpdateScope, path: string, value: any) => void) => void;
-    }
-    state: GlobalState
 }
 
 interface IHttpRequest {
@@ -56,9 +93,9 @@ interface IHttpResponse {
 
     getRequestUrls(): string[]
 
-    getHeaders(): {[key: string]: string}
+    getHeaders(): { [key: string]: string }
 
-    getCookies(): {[key: string]: string}
+    getCookies(): { [key: string]: string }
 
     getText(): string
 
@@ -69,19 +106,19 @@ interface IHttpResponse {
     getBody<T>(): T
 }
 
-interface IHttpRequestConfig{
+interface IHttpRequestConfig {
     timeout: number
     proxies?: string
 }
 
-interface IHttpRequestBuilder{
-    cookie(cookies: {[key:string]: string}): IHttpRequestBuilder
+interface IHttpRequestBuilder {
+    cookie(cookies: { [key: string]: string }): IHttpRequestBuilder
 
     cookie(name: string, value: string): IHttpRequestBuilder
 
     cookie(cookieStr: string): IHttpRequestBuilder
 
-    header(headers: {[key: string]: string}): IHttpRequestBuilder
+    header(headers: { [key: string]: string }): IHttpRequestBuilder
 
     header(name: string, value: string): IHttpRequestBuilder
 
@@ -96,7 +133,7 @@ interface IHttpRequestBuilder{
     perform(): Promise<IHttpResponse>
 }
 
-interface IHttpBody{
+interface IHttpBody {
     json(json: string): IHttpRequestBuilder
 
     json(json: object): IHttpRequestBuilder
@@ -113,24 +150,24 @@ interface IHttpBody{
 
     param(): IHttpRequestBuilder
 
-    params(nameValues:{[key: string]: any}): IHttpRequestBuilder
+    params(nameValues: { [key: string]: any }): IHttpRequestBuilder
 
     data(name: string, value: any): IHttpBody
 
-    data(nameValues:{[key: string]: any}): IHttpRequestBuilder
+    data(nameValues: { [key: string]: any }): IHttpRequestBuilder
 
     data(): IHttpRequestBuilder
 }
 
-interface IHttpParam{
+interface IHttpParam {
     param(name: string, value: any): IHttpParam
 
     param(): IHttpRequestBuilder
 
-    params(nameValues: {[key: string]: any})
+    params(nameValues: { [key: string]: any }): IHttpRequestBuilder
 }
 
-interface IHttpUri{
+interface IHttpUri {
     get(url: string): IHttpParam
 
     post(url: string): IHttpBody
@@ -144,15 +181,12 @@ interface IHttpUri{
     patch(url: string): IHttpBody
 }
 
-interface EntryType{
-    encryption_iv: string | null
-    encryption_salt: string | null
-    filename: string
+interface EntryType {
     steamid: string,
-    account_name: string
+    account_name: string,
 }
 
-interface Settings{
+interface Settings {
     encrypted: boolean
     first_run: boolean
     periodic_checking: boolean
@@ -162,24 +196,29 @@ interface Settings{
     auto_confirm_trades: boolean
     maFilesDir: string
     entries: EntryType[]
-    proxy?:string
+    proxy?: string
+    timeout: number
 }
 
-interface RuntimeContext{
-    passkey: string
-    token: string
-    progress: number
-    selectedSteamid: string
+interface RuntimeContext {
+    passkey?: string
     timeOffset: number
     timeNextSyncTime: number
-    loginSession?: any,
 }
 
-type UpdateScope = 'settings' | 'runtime'
+interface SteamAccount extends SteamGuard {
+    Session?: SteamSession
+}
 
-interface GlobalState {
-    settings: Settings
-    runtimeContext: RuntimeContext
+interface SteamSession {
+    access_token: string
+    refresh_token: string
+    SteamID: string
+    account_name: string
+    cookies: string
+    at: number
+    rt: number
+    SessionID: string
 }
 
 // 定义发送给前端的消息结构
@@ -187,13 +226,7 @@ interface SteamLoginEvent {
     account_name: string;      // 关键：必须带上账号名，前端才知道是哪个账号
     result: EResult;           // 结果代码
     status?: 'LoginSuccess' | 'Need2FA' | 'Converting' | 'Failed' | 'Timeout'; // 状态描述
-    data?: {
-        access_token: string
-        refresh_token: string
-        steamid: string
-        account_name: string
-        cookies: string[]
-    };                // 成功时的 Cookies/Token 数据
+    data?: SteamSession;                // 成功时的 Cookies/Token 数据
     error_message?: string;    // 错误信息
     valid_actions?: {
         type: number
@@ -207,9 +240,16 @@ interface LoginOptions {
     steamGuardCode?: string
     refresh_token?: string
 }
+
+interface SteamResponse<T> extends SteamApiResponse<T> {
+    eresult: number
+    message?: string
+    status: number
+}
+
 // 1. 定义 Steam API 的外层包装结构
 interface SteamApiResponse<T> {
-    response: T
+    response?: T
 }
 
 // 2. 定义内部数据结构
@@ -223,4 +263,92 @@ interface QueryTimeResponse {
     sync_timeout: number
     try_again_seconds: number
     max_attempts: number
+}
+
+interface SteamGuard {
+    shared_secret: string
+    serial_number: string
+    revocation_code: string
+    uri: string
+    server_time: string
+    account_name: string
+    token_gid: string
+    identity_secret: string
+    secret_1: string
+    status: number
+    device_id: string
+    fully_enrolled: boolean
+    steamid: string
+}
+
+interface FinalizeAuthenticatorResponse {
+    status: number
+    server_time: string
+    want_more: boolean
+    success: boolean
+}
+
+interface RemoveAuthenticatorViaChallengeContinueResponse {
+    success: boolean
+    replacement_token: SteamGuard
+}
+
+interface QueryStatusResponse {
+    state: number
+    inactivation_reason: number
+    authenticator_type: number
+    authenticator_allowed: boolean
+    steamguard_scheme: number
+    token_gid: string
+    email_validated: boolean
+    device_identifier: string
+    time_created: string
+    revocation_attempts_remaining: number
+    classified_agent: string
+    allow_external_authenticator: boolean
+    time_transferred: string
+    version: number
+}
+
+interface ConfirmationsResponse {
+    success: boolean
+    conf: Confirmation[]
+}
+
+interface Confirmation {
+    type: number // 1-其他,2-交易,3-市场
+    type_name: string
+    id: string
+    creator_id: string // 如果type=2,则 create_id=tradeOfferId
+    nonce: string
+    creation_time: string
+    cancel: string
+    accept: string
+    icon: string
+    multi: boolean
+    headline: string
+    summary: string[]
+    warn: any
+}
+
+enum ConfirmationType {
+    UNKNOWN = 0,
+    OTHER = 1,
+    TRADE = 2,
+    MARKET = 3,
+    ACCOUNT = 4,
+    PHONE = 5,
+    RECOVERY = 6
+}
+
+interface ConfirmationOptions {
+    identitySecret: string,
+    deviceid: string,
+    steamid: string,
+    cookies: string
+}
+
+interface ConfirmationAjaxOpResponse {
+    success: boolean
+    message: string
 }
