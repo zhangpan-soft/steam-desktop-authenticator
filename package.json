@@ -1,9 +1,9 @@
 {
   "name": "steam-desktop-authenticator",
   "private": true,
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A desktop authenticator for Steam that's written in Electron and Vue.",
-  "author": "zp99992050@gmail.com",
+  "author": "zp99992050 <zp99992050@gmail.com>",
   "type": "module",
   "repository": {
     "type": "git",
