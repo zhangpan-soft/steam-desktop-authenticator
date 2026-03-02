@@ -17,7 +17,8 @@ const handleSetupEncryption = () => {
 <template>
   <el-button size="small" @click="handleSetupEncryption">Setup Encryption</el-button>
 
-  <Passkey v-if="currentData.passkeyModel" v-model:show="currentData.passkeyModel"
+  <Passkey v-if="currentData.passkeyModel"
+           v-model:show="currentData.passkeyModel"
            :show-cancel-button="true"/>
 </template>
 

@@ -90,16 +90,29 @@ ipcMainHandler
     .handle('context:set', async (event, args) => {
         console.log('context:set', args, event)
         if (args.passkey) {
-            const settings = settingsDb.data
-            if (!settings.encrypted){
-                settings.encrypted = true
-                if (settings.entries.length>0){
-                    settings.entries.forEach((item) => {
-                        steamAccountDbs.db(item.account_name, args.passkey)
+            if (!settingsDb.data.encrypted) { // 如果未加密
+                settingsDb.data.encrypted = true // 设置为加密
+                settingsDb.update() // 更新settings
+                settingsDb.data.entries.forEach((item) => {
+                    // 按未加密读取数据
+                    const db = steamAccountDbs.db(item.account_name)
+                    // 设置加密
+                    db.setPasskey(args.passkey)
+                })
+            } else { // 如果已加密
+                if (!runtimeContext.passkey) { // 如果当前运行时还未设置密码
+                    if (settingsDb.data.entries.length>0){
+                        // 获取一次已存在数据, 如果获取失败, 则说明密码不正确
+                        steamAccountDbs.db(settingsDb.data.entries[0].account_name, args.passkey)
+                    }
+                } else { // 如果运行时已存在密码,证明是修改密码
+                    settingsDb.data.entries.forEach((item) => {
+                        // 使用老密码读取数据
+                        const db = steamAccountDbs.db(item.account_name, runtimeContext.passkey)
+                        // 设置新密码
+                        db.setPasskey(args.passkey)
                     })
                 }
-            } else if (settings.entries.length>0){
-                steamAccountDbs.db(settings.entries[0].account_name, args.passkey)
             }
             runtimeContext.passkey = args.passkey
         }

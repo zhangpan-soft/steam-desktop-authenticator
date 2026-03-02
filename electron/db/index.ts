@@ -121,7 +121,9 @@ class SteamAccountAdapter implements SyncAdapter<SteamAccount> {
         const encryptedText = splits[3];
 
         // 关键：使用文件中的 Salt 重新派生 Key
-        const key = crypto.scryptSync(this.passkey, salt, this.KEY_LEN);
+        const key = crypto.scryptSync(crypto.createHash('md5').update(this.passkey).digest('hex'),
+            salt,
+            this.KEY_LEN);
 
         const decipher = crypto.createDecipheriv(this.ALGORITHM, key, iv);
         decipher.setAuthTag(tag)
@@ -141,8 +143,10 @@ class SteamAccountAdapter implements SyncAdapter<SteamAccount> {
 
         const iv = crypto.randomBytes(this.IV_LEN)
         const salt = crypto.randomBytes(this.SALT_LEN)
-        // 关键：每次写入生成新的 Salt -> 新的 Key
-        const key = crypto.scryptSync(this.passkey, salt, this.KEY_LEN);
+        // 关键：使用文件中的 Salt 重新派生 Key
+        const key = crypto.scryptSync(crypto.createHash('md5').update(this.passkey).digest('hex'),
+            salt,
+            this.KEY_LEN);
 
         const cipher = crypto.createCipheriv(this.ALGORITHM, key, iv);
 
