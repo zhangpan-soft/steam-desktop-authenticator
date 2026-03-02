@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {reactive, ref} from "vue";
+import {reactive, ref, toRaw} from "vue";
 import SteamLogin from "./SteamLogin.vue";
 import CustomDialog from "./CustomDialog.vue";
 import {Hide, Lock, Unlock, View} from "@element-plus/icons-vue";
@@ -28,13 +28,15 @@ const steamLoginRef = ref<InstanceType<typeof SteamLogin>>()
 const events = {
   async handleLoginSuccess(session: SteamSession){
     currentData.steamAccount.Session = session
-    await window.ipcRenderer.invoke('steam:account:set', currentData.steamAccount)
+    await window.ipcRenderer.invoke('steam:account:set', {...toRaw<SteamAccount>(currentData.steamAccount)})
     const settings:Settings = await window.ipcRenderer.invoke('settings:get')
     const index = settings.entries.findIndex(item=> item.account_name === currentData.steamAccount.account_name)
     if (index===-1){
       settings.entries.push({steamid: currentData.steamAccount.Session.SteamID, account_name: currentData.steamAccount.account_name})
     }
     await window.ipcRenderer.invoke('settings:set', settings)
+    ElMessage.success('Import Success')
+    show.value = false
   },
   handleLoginFailed(err: any){
     console.log(err)
