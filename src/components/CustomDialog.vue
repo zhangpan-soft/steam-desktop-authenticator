@@ -1,5 +1,6 @@
 <script setup lang="ts">
 
+import { useI18n } from 'vue-i18n'
 import type { Component } from 'vue'
 // 1. 优雅的显示状态控制
 const show = defineModel<boolean>('show', {default: false})
@@ -15,9 +16,10 @@ withDefaults(defineProps<{
   showCancelButton?: boolean
   showConfirmButton?: boolean
 }>(), {
+  // @ts-ignore
   loading: false,
-  cancelButtonText: 'Cancel',
-  confirmButtonText: 'Confirm',
+  cancelButtonText: () => useI18n().t('dialog.cancel'),
+  confirmButtonText: () => useI18n().t('dialog.confirm'),
   showCancelButton: true,
   showConfirmButton: true
 })

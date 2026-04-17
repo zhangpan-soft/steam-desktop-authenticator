@@ -3,6 +3,7 @@ import {reactive, ref, toRaw} from "vue";
 import SteamLogin from "./SteamLogin.vue";
 import CustomDialog from "./CustomDialog.vue";
 import {Hide, Lock, Unlock, View} from "@element-plus/icons-vue";
+import { useI18n } from 'vue-i18n'
 import {ElMessage} from "element-plus";
 
 const currentData = reactive<{
@@ -22,6 +23,7 @@ const currentData = reactive<{
 })
 
 const show = defineModel<boolean>('show', { default: false })
+const { t } = useI18n()
 
 const steamLoginRef = ref<InstanceType<typeof SteamLogin>>()
 
@@ -35,12 +37,12 @@ const events = {
       settings.entries.push({steamid: currentData.steamAccount.Session.SteamID, account_name: currentData.steamAccount.account_name})
     }
     await window.ipcRenderer.invoke('settings:set', settings)
-    ElMessage.success('Import Success')
+    ElMessage.success(t('import.importSuccess'))
     show.value = false
   },
   handleLoginFailed(err: any){
     console.log(err)
-    ElMessage.error('Import Failed')
+    ElMessage.error(t('import.importFailed'))
     show.value = false
     currentData.loginModelShow = false
   },
@@ -50,61 +52,61 @@ const events = {
   },
   async handleConfirm() {
     currentData.loading = true;
-      try {
-        const selectFileRes = await window.ipcRenderer.invoke('showOpenDialog', {
-          properties: ['openFile'],
-          filters: [{ name: '.maFile', extensions: ['maFile', 'json', 'text'] }]
-        })
+    try {
+      const selectFileRes = await window.ipcRenderer.invoke('showOpenDialog', {
+        properties: ['openFile'],
+        filters: [{ name: '.maFile', extensions: ['maFile', 'json', 'text'] }]
+      })
 
-        // 修正逻辑：如果用户取消了对话框
-        if (selectFileRes.canceled) {
-          ElMessage.warning('You canceled')
-          return
-        }
-
-        const filePath = selectFileRes.filePaths[0]
-        if (!filePath) {
-          ElMessage.warning('No file paths found.')
-          return
-        }
-
-        let steamAccount: SteamAccount;
-
-        if (currentData.old) {
-          const importMaFileRes = await window.ipcRenderer.invoke('importMaFile', {
-            path: filePath,
-            passkey: currentData.passkey,
-          })
-          steamAccount = importMaFileRes.data as SteamAccount
-        } else {
-          // 统一使用 await 替代 .then
-          const res = await window.ipcRenderer.invoke('steam:account:get', {
-            filepath: filePath,
-            passkey: currentData.passkey,
-          })
-          steamAccount = res as SteamAccount
-        }
-        currentData.steamAccount = steamAccount
-        currentData.loginModelShow = true
-      } catch (e: any) {
-        ElMessage.error(e.message || 'Unknown Error')
-      } finally {
-        // 无论成功失败，闭包执行完毕后关闭 Loading
-        currentData.loading = false
+      // 修正逻辑：如果用户取消了对话框
+      if (selectFileRes.canceled) {
+        ElMessage.warning(t('import.userCanceled'))
+        return
       }
+
+      const filePath = selectFileRes.filePaths[0]
+      if (!filePath) {
+        ElMessage.warning(t('import.noFileSelected'))
+        return
+      }
+
+      let steamAccount: SteamAccount;
+
+      if (currentData.old) {
+        const importMaFileRes = await window.ipcRenderer.invoke('importMaFile', {
+          path: filePath,
+          passkey: currentData.passkey,
+        })
+        steamAccount = importMaFileRes.data as SteamAccount
+      } else {
+        // 统一使用 await 替代 .then
+        const res = await window.ipcRenderer.invoke('steam:account:get', {
+          filepath: filePath,
+          passkey: currentData.passkey,
+        })
+        steamAccount = res as SteamAccount
+      }
+      currentData.steamAccount = steamAccount
+      currentData.loginModelShow = true
+    } catch (e: any) {
+      ElMessage.error(e.message || t('errors.unknown'))
+    } finally {
+      // 无论成功失败，闭包执行完毕后关闭 Loading
+      currentData.loading = false
+    }
   }
 }
 </script>
 
 <template>
-  <CustomDialog :title="'Import Account'"
+  <CustomDialog :title="t('import.title')"
                 :loading="currentData.loading"
                 v-model:show="show"
                 @cancel="events.handleCancel"
                 @confirm="events.handleConfirm">
     <el-row>
       <el-text size="small">
-        Enter your encryption passkey if your .maFile is encrypted:
+        {{ t('import.passkeyLabel') }}
       </el-text>
     </el-row>
     <el-row>
@@ -127,12 +129,12 @@ const events = {
     <el-row>
       <el-switch size="small" v-model="currentData.old"/>
       <el-text size="small">
-        If your maFile from old brand, You need to turn on this switch
+        {{ t('import.oldMaFileLabel') }}
       </el-text>
     </el-row>
     <el-row>
       <el-text size="small">
-        If you import an encrypted .maFile, the manifest file must be next to it.
+        {{ t('import.manifestHint') }}
       </el-text>
     </el-row>
   </CustomDialog>

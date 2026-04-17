@@ -18,7 +18,8 @@ function getDefaultSettings(): Settings {
         maFilesDir: path.join(app.getPath('userData'), 'maFiles'), // ✅ 安全：只在调用时执行
         entries: [],
         proxy: undefined,
-        timeout: 10_000
+        timeout: 10_000,
+        language: 'en'
     };
 }
 

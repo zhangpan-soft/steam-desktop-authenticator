@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import {onMounted, onUnmounted, reactive} from 'vue'
 import Passkey from "../components/Passkey.vue";
 import Initializing from "../components/Initializing.vue";
@@ -14,6 +15,8 @@ type CurrentDataType = {
   passkeyModel: boolean
   initializingModel: boolean
 }
+
+const { t } = useI18n()
 
 const currentData = reactive<CurrentDataType>({
   passkeyModel: false,
@@ -78,8 +81,8 @@ onUnmounted(() => {
     </el-main>
     <el-footer>
       <el-row justify="space-between" align="middle" style="height: 100%; padding: 0 5px;">
-        <el-text size="small">Check for updates</el-text>
-        <el-text size="small">v1.0.15</el-text>
+        <el-text size="small">{{ t('home.checkForUpdates') }}</el-text>
+        <el-text size="small">v0.1.3</el-text>
       </el-row>
     </el-footer>
   </el-container>

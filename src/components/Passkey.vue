@@ -3,10 +3,12 @@
 import CustomDialog from "./CustomDialog.vue";
 import {reactive} from "vue";
 import {ElMessage} from "element-plus";
+import { useI18n } from 'vue-i18n'
 import {Hide, Lock, Unlock, View} from "@element-plus/icons-vue";
 
 const show = defineModel<boolean>('show', {default: false})
 
+const { t } = useI18n()
 withDefaults(defineProps<{
   showCancelButton?: boolean
 }>(), {showCancelButton: false})
@@ -41,7 +43,7 @@ const events = {
 </script>
 
 <template>
-  <CustomDialog :title="'Passkey'"
+  <CustomDialog :title="t('passkey.title')"
                 :loading="currentData.loading"
                 v-model:show="show"
                 :show-cancel-button="showCancelButton"
@@ -49,8 +51,7 @@ const events = {
                 @confirm="events.handleConfirm"
                 @cancel="events.handleCancel"
   >
-    <el-input size="small" :type="currentData.locked ? 'password' : 'text'" v-model="currentData.passkey"
-              placeholder="Please Input SDA Passkey">
+    <el-input size="small" :type="currentData.locked ? 'password' : 'text'" v-model="currentData.passkey" :placeholder="t('passkey.placeholder')">
       <template #prefix>
         <el-icon>
           <component :is="currentData.locked ? Lock : Unlock"/>

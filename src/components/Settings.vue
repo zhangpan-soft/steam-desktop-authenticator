@@ -3,8 +3,10 @@
 import CustomDialog from "./CustomDialog.vue";
 import {onMounted, reactive, toRaw} from "vue";
 import {Setting} from '@element-plus/icons-vue'
+import { useI18n } from 'vue-i18n'
 
 const show = defineModel<boolean>('show', {default: false})
+const { t } = useI18n()
 const currentData = reactive<{
   settings: Settings,
   loading: boolean
@@ -36,19 +38,18 @@ onMounted(async () => {
 </script>
 
 <template>
-  <CustomDialog v-model:show="show"
-                :title="'Settings'"
+  <CustomDialog v-model:show="show" :title="t('settings.title')"
                 :icon="Setting"
                 :loading="currentData.loading"
                 @confirm="events.handleConfirm"
                 @cancel="events.handleCancel"
-                :confirm-button-text="'Save'"
+                :confirm-button-text="t('dialog.save')"
   >
     <el-row justify="start" align="middle">
       <el-checkbox v-model="currentData.settings.periodic_checking" size="small"/>
       <el-text size="small" class="settings-text"
                @click="currentData.settings.periodic_checking = !currentData.settings.periodic_checking">
-        Periodically check for new confirmations and show a popup when they arrive
+        {{ t('settings.periodicCheck') }}
       </el-text>
     </el-row>
 
@@ -60,7 +61,7 @@ onMounted(async () => {
           style="width: 50px; flex-shrink: 0;"
       />
       <el-text size="small" class="settings-text">
-        Seconds between checking for confirmations
+        {{ t('settings.periodicInterval') }}
       </el-text>
     </el-row>
 
@@ -68,7 +69,7 @@ onMounted(async () => {
       <el-checkbox v-model="currentData.settings.periodic_checking_checkall" size="small"/>
       <el-text size="small" class="settings-text"
                @click="currentData.settings.periodic_checking_checkall = !currentData.settings.periodic_checking_checkall">
-        Check all accounts for confirmations
+        {{ t('settings.checkAllAccounts') }}
       </el-text>
     </el-row>
 
@@ -76,7 +77,7 @@ onMounted(async () => {
       <el-checkbox v-model="currentData.settings.auto_confirm_market_transactions" size="small"/>
       <el-text size="small" class="settings-text"
                @click="currentData.settings.auto_confirm_market_transactions = !currentData.settings.auto_confirm_market_transactions">
-        Auto-confirm market transactions
+        {{ t('settings.autoConfirmMarket') }}
       </el-text>
     </el-row>
 
@@ -84,15 +85,15 @@ onMounted(async () => {
       <el-checkbox v-model="currentData.settings.auto_confirm_trades" size="small"/>
       <el-text size="small" class="settings-text"
                @click="currentData.settings.auto_confirm_trades = !currentData.settings.auto_confirm_trades">
-        Auto-confirm transactions
+        {{ t('settings.autoConfirmTrades') }}
       </el-text>
     </el-row>
     <el-row style="margin-bottom: 12px">
       <el-text size="small">
-        Please setting the httpProxy or socksProxy. If in China
+        {{ t('settings.proxyHint') }}
       </el-text>
       <el-input v-model="currentData.settings.proxy" size="small"
-                placeholder="http[s]|socks5://username@password:ip:port"></el-input>
+                :placeholder="t('settings.proxyPlaceholder')"></el-input>
     </el-row>
     <el-row justify="start" align="middle" class="settings-row">
       <el-input
@@ -102,7 +103,7 @@ onMounted(async () => {
           style="width: 150px; flex-shrink: 0;"
       />
       <el-text size="small" class="settings-text">
-        Timeout of requests in milliseconds
+        {{ t('settings.timeout') }}
       </el-text>
     </el-row>
   </CustomDialog>

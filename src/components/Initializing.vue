@@ -2,10 +2,12 @@
 
 import CustomDialog from "./CustomDialog.vue";
 import {ElMessage} from "element-plus";
+import { useI18n } from 'vue-i18n'
 import {ref} from "vue";
 
 const show = defineModel<boolean>('show', {default: false})
 const loading = ref(false)
+const { t } = useI18n()
 
 const events = {
   async handleDefault(){
@@ -24,12 +26,12 @@ const events = {
         properties: ['openDirectory']
       })
       if (res.canceled) {
-        ElMessage.warning('Canceled')
+        ElMessage.warning(t('initializing.canceled'))
         return
       }
       const filepath = res.filePaths[0]
       await window.ipcRenderer.invoke('settings:set', {maFilesDir: filepath, first_run: false})
-      ElMessage.success('Success')
+      ElMessage.success(t('initializing.success'))
       show.value = false
     } finally {
       loading.value = false
@@ -39,21 +41,21 @@ const events = {
 </script>
 
 <template>
-  <CustomDialog :title="'Initializing'"
+  <CustomDialog :title="t('initializing.title')"
                 :loading="loading"
                 v-model:show="show"
                 :show-cancel-button="false"
                 :show-confirm-button="false">
     <el-row>
       <el-text type="info" size="small">
-        Please Select the MaFiles Folder
+        {{ t('initializing.selectMaFilesFolder') }}
       </el-text>
     </el-row>
     <el-row>
-      <el-button type="default" style="width: 100%" @click="events.handleDefault">Default</el-button>
+      <el-button type="default" style="width: 100%" @click="events.handleDefault">{{ t('initializing.default') }}</el-button>
     </el-row>
     <el-row>
-      <el-button type="default" style="width: 100%" @click="events.handleCustom">Custom</el-button>
+      <el-button type="default" style="width: 100%" @click="events.handleCustom">{{ t('initializing.custom') }}</el-button>
     </el-row>
   </CustomDialog>
 </template>

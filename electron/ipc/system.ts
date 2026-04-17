@@ -10,15 +10,12 @@ import runtimeContext from "../utils/runtime-context.ts";
 
 ipcMainHandler
     .handle('showOpenDialog', async (event, args) => {
-        console.log('showOpenDialog', args, event)
         return dialog.showOpenDialog(args)
     })
     .handle('readFile', async (event, args) => {
-        console.log('readFile', args, event)
         return fs.readFile(args.path, args.options)
     })
     .handle('readMaFile', async (event, args) => {
-        console.log('readMaFile', args, event)
         let filepath = args.path
         if (!filepath && args.filename) {
             filepath = path.join(settingsDb.data.maFilesDir, args.filename)
@@ -26,7 +23,6 @@ ipcMainHandler
         return readMaFile(filepath, {passkey: args.passkey, iv: args.iv, salt: args.salt})
     })
     .handle('importMaFile', async (event, args) => {
-        console.log('importMaFile', args, event)
         if (args.passkey) {
             const fileExists = async (filepath: string) => {
                 return await fs.access(filepath).then(() => {
@@ -60,7 +56,6 @@ ipcMainHandler
         }
     })
     .handle('open-window', async (event, args) => {
-        console.log('open-window', args, event)
         const {uri, options} = {...args}
         if (!options.parent) {
             options.parent = windowManager.getWindow('/')
@@ -70,25 +65,20 @@ ipcMainHandler
         windowManager.addChild(uri, options)
     })
     .handle('close-window', async (event, args) => {
-        console.log('close-window', args, event)
         windowManager.close(args.hash)
     })
     .handle('settings:get', async (event, args) => {
-        console.log('settings:get', args, event)
         return settingsDb.data
     })
     .handle('settings:set', async (event, args) => {
-        console.log('settings:set', args, event)
         settingsDb.data = {...args}
         settingsDb.update()
         windowManager.sendEvent('/', 'settings:message:change', settingsDb.data)
     })
     .handle('context:get', async (event, args) => {
-        console.log('context:get', args, event)
         return {...runtimeContext}
     })
     .handle('context:set', async (event, args) => {
-        console.log('context:set', args, event)
         if (args.passkey) {
             if (!settingsDb.data.encrypted) { // 如果未加密
                 settingsDb.data.encrypted = true // 设置为加密

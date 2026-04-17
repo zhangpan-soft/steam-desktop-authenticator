@@ -8,14 +8,18 @@ import {RegisterMobileDevice} from "../steam/mobile-device.ts";
 import {
     AddAuthenticator,
     FinalizeAddAuthenticator,
-    hasPhoneAttached, QueryStatus,
+    QueryStatus,
     RemoveAuthenticatorViaChallengeContinue,
     RemoveAuthenticatorViaChallengeStart
 } from "../steam/two-factor.ts";
+import {
+    ConfirmAddPhoneToAccount,
+    IsAccountWaitingForEmailConfirmation,
+    SendPhoneVerificationCode, SetAccountPhoneNumber, VerifyAccountPhoneWithCode
+} from "../steam/phone.ts";
 
 ipcMainHandler
     .handle('steam:login', async (event, args) => {
-        console.log('steamLogin', args, event)
         const loginOptions: LoginOptions = {...args}
         if (args.shared_secret) {
             loginOptions.steamGuardCode = await generateAuthCode(args.shared_secret)
@@ -31,7 +35,6 @@ ipcMainHandler
         return steamLoginExecutor.login(loginOptions)
     })
     .handle('steam:RefreshLogin', async (event, args)=>{
-        console.log('steamRefreshLogin', args, event)
         try {
             const steamAccount = steamAccountDbs.db(args.account_name, runtimeContext.passkey).data
             if (!steamAccount || !steamAccount.Session || !steamAccount.Session.refresh_token) {
@@ -49,18 +52,15 @@ ipcMainHandler
         }
     })
     .handle('steam:submitSteamGuard', (event, args) => {
-        console.log('steamSubmitSteamGuard', args, event)
         return steamLoginExecutor.submitSteamGuardCode(args.account_name, args.steamGuardCode)
     })
     .handle('steam:cancelLogin', (event, args) => {
-        console.log('steamCancelLogin', args, event)
         if (!args.account_name) {
             return
         }
         return steamLoginExecutor.cancelLogin(args.account_name)
     })
     .handle('steam:getConfirmations', async (event, args) => {
-        console.log('steamGetConfirmations', args, event)
         const steamAccountDb = steamAccountDbs.db(args.account_name, runtimeContext.passkey)
         const response: SteamResponse<ConfirmationsResponse> = {eresult: EResult.Fail, status: 0}
         if (!steamAccountDb.data.Session) {
@@ -97,10 +97,9 @@ ipcMainHandler
         })
     })
     .handle('steam:confirmations:respond', async (event, args) => {
-        console.log('steam:confirmations:respond', args, event)
         const { account_name, confId, confKey, action } = args
         const steamAccountDb = steamAccountDbs.db(account_name, runtimeContext.passkey)
-        
+
         if (!steamAccountDb.data.Session) {
             return { eresult: EResult.Fail, message: 'Session not found', status: 0 }
         }
@@ -122,7 +121,6 @@ ipcMainHandler
         }
     })
     .handle('steam:token', async (event, args) => {
-        console.log('steam:token', event, args)
         const {account_name} = {...args}
         const steamAccountDb = steamAccountDbs.db(account_name, runtimeContext.passkey)
         const token = await generateAuthCode(steamAccountDb.data.shared_secret)
@@ -133,11 +131,9 @@ ipcMainHandler
         }
     })
     .handle('steam:generateCode', async (event, args) => {
-        console.log('steam:generateCode', event, args)
         return await generateAuthCode(args.shared_secret)
     })
     .handle('steam:account:get', async (event, args) => {
-        console.log('steam:account:get', event, args)
         const {account_name, filepath, passkey} = {...args}
         if (filepath){
             const steamAccountDb = new SteamAccountDb(filepath, passkey)
@@ -148,7 +144,6 @@ ipcMainHandler
         }
     })
     .handle('steam:account:set', async (event, args) => {
-        console.log('steam:account:set', event, args)
         const steamAccount = {...args}
         const steamAccountDb = steamAccountDbs.db(steamAccount.account_name, runtimeContext.passkey)
         steamAccountDb.data = {...steamAccountDb.data, ...steamAccount}
@@ -156,40 +151,49 @@ ipcMainHandler
         return true
     })
     .handle('steam:MobileDevice:RegisterMobileDevice', async (event, args) => {
-        console.log('steam:MobileDevice:RegisterMobileDevice', event, args)
         const steamSession: SteamSession = {...args}
         return RegisterMobileDevice(steamSession.access_token)
     })
     .handle('steam:TwoFactor:AddAuthenticator', async (event, args) => {
-        console.log('steam:TwoFactor:AddAuthenticator', event, args)
         const steamSession: SteamSession = {...args}
         const {deviceId} = {...args}
         return AddAuthenticator(steamSession.access_token, deviceId)
     })
     .handle('steam:TwoFactor:FinalizeAddAuthenticator', async (event, args) => {
-        console.log('steam:TwoFactor:FinalizeAddAuthenticator', event, args)
         const steamAccount: SteamAccount = {...args}
         const {smsCode} = {...args}
         return FinalizeAddAuthenticator(steamAccount.Session?.access_token as string, steamAccount.shared_secret, smsCode)
     })
     .handle('steam:TwoFactor:RemoveAuthenticatorViaChallengeStart', async (event, args) => {
-        console.log('steam:TwoFactor:RemoveAuthenticatorViaChallengeStart', event, args)
         const steamSession: SteamSession = {...args}
         return RemoveAuthenticatorViaChallengeStart(steamSession.access_token, steamSession.cookies)
     })
     .handle('steam:TwoFactor:RemoveAuthenticatorViaChallengeContinue', async (event, args) => {
-        console.log('steam:TwoFactor:RemoveAuthenticatorViaChallengeContinue', event, args)
         const steamSession: SteamSession = {...args}
         const {smsCode} = {...args}
         return RemoveAuthenticatorViaChallengeContinue(steamSession.access_token, smsCode)
     })
-    .handle('steam:TwoFactor:hasPhoneAttached', async (event, args) => {
-        console.log('steam:TwoFactor:hasPhoneAttached', event, args)
-        const steamSession: SteamSession = {...args}
-        return hasPhoneAttached(steamSession.SessionID, steamSession.cookies)
-    })
     .handle('steam:TwoFactor:QueryStatus', async (event,args)=>{
-        console.log('steam:TwoFactor:QueryStatus', event, args)
         const steamSession:SteamSession = {...args}
         return QueryStatus(steamSession.access_token)
+    })
+    .handle('steam:Phone:ConfirmAddPhoneToAccount',(event, args)=>{
+        const {access_token, steamid, stoken} = {...args}
+        return ConfirmAddPhoneToAccount(access_token, steamid, stoken)
+    })
+    .handle('steam:Phone:IsAccountWaitingForEmailConfirmation', (event, args)=>{
+        const {access_token} = {...args}
+        return IsAccountWaitingForEmailConfirmation(access_token)
+    })
+    .handle('steam:Phone:SendPhoneVerificationCode', (event, args)=>{
+        const {access_token, language} = {...args}
+        return SendPhoneVerificationCode(access_token, language)
+    })
+    .handle('steam:Phone:SetAccountPhoneNumber', (event, args)=>{
+        const {access_token, phoneNumber, phoneCountryCode} = {...args}
+        return SetAccountPhoneNumber(access_token, phoneNumber, phoneCountryCode)
+    })
+    .handle('steam:Phone:VerifyAccountPhoneWithCode', (event, args)=>{
+        const {access_token, code} = {...args}
+        return VerifyAccountPhoneWithCode(access_token, code)
     })

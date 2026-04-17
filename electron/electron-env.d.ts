@@ -57,9 +57,13 @@ type SteamMessageChannel =
     | 'steam:TwoFactor:RemoveAuthenticator'
     | 'steam:TwoFactor:RemoveAuthenticatorViaChallengeContinue'
     | 'steam:TwoFactor:RemoveAuthenticatorViaChallengeStart'
-    | 'steam:TwoFactor:hasPhoneAttached'
     | 'steam:TwoFactor:QueryStatus'
     | 'steam:confirmations:respond'
+    | 'steam:Phone:ConfirmAddPhoneToAccount'
+    | 'steam:Phone:IsAccountWaitingForEmailConfirmation'
+    | 'steam:Phone:SendPhoneVerificationCode'
+    | 'steam:Phone:SetAccountPhoneNumber'
+    | 'steam:Phone:VerifyAccountPhoneWithCode'
 
 type DatabaseMessageChannel = 'database:steamAccount:get'
 
@@ -198,6 +202,7 @@ interface Settings {
     entries: EntryType[]
     proxy?: string
     timeout: number
+    language?: 'en' | 'zh'
 }
 
 interface RuntimeContext {
@@ -351,4 +356,14 @@ interface ConfirmationOptions {
 interface ConfirmationAjaxOpResponse {
     success: boolean
     message: string
+}
+
+interface SetAccountPhoneNumberResponse {
+    confirmation_email_address: string
+    phone_number_formatted: string
+}
+
+interface IsAccountWaitingForEmailConfirmationResponse{
+    awaiting_email_confirmation: boolean
+    seconds_to_wait: number
 }

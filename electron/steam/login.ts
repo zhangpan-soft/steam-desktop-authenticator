@@ -66,6 +66,7 @@ class SteamLoginExecutor {
             // 5. 绑定事件监听 (先埋伏)
             this._bindSessionEvents(session, accountName);
 
+
             // 6. 执行登录动作 (再开枪)
             if (options.refresh_token) {
                 // 6a.如果有刷新令牌，直接刷新

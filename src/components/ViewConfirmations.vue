@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import {ElMessage} from "element-plus";
+import { useI18n } from 'vue-i18n'
 import {ref} from "vue";
 
 const props = withDefaults(defineProps<{
   account_name?: string
 }>(),{})
 
+const { t } = useI18n()
 const loading = ref(false)
 
 const handleViewConfirmations = async () => {
   if (!props.account_name) {
-    ElMessage.error('Please select one account')
+    ElMessage.error(t('home.selectAccountHint'))
     return
   }
   loading.value = true
@@ -35,7 +37,7 @@ const handleViewConfirmations = async () => {
         icon: 'icon.png',
         x: screen.width / 2 + 210,
         y: screen.height / 2 - 400,
-        title: 'Confirmations'
+        title: t('confirmations.title')
       }
     })
   } finally {
@@ -46,8 +48,8 @@ const handleViewConfirmations = async () => {
 </script>
 
 <template>
-  <el-button :loading="loading" type="default" size="small" class="full-width-btn" @click="handleViewConfirmations">
-    View Confirmations
+  <el-button :loading="loading" type="default" size="small" class="full-width-btn" @click="handleViewConfirmations"
+  >{{ t('home.viewConfirmations') }}
   </el-button>
 </template>
 
