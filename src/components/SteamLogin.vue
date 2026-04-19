@@ -84,7 +84,7 @@ const events = {
       emit('failed', new Error(t('steamLogin.loginFailed')))
     }
   },
-  async onLoginStatusChanged(_event: any, args: SteamLoginEvent){
+  async onLoginStatusChanged(event: any,args: SteamLoginEvent){
     if (currentData.loginForm.account_name !== args.account_name) return
 
     switch (args.status) {
@@ -96,7 +96,7 @@ const events = {
 
       case 'Need2FA':
         const steamAccount:SteamAccount = await window.ipcRenderer.invoke('steam:account:get')
-        if (!steamAccount.shared_secret){
+        if (!steamAccount.guard?.shared_secret){
           if (props.shared_secret) {
             ElMessage.error(t('steamLogin.loginFailed'))
             currentData.loading = false
@@ -104,9 +104,9 @@ const events = {
           }
           await this.handle2FAPrompt()
         } else {
-          await window.ipcRenderer.invoke('steam:token', {account_name: steamAccount.account_name})
+          await window.ipcRenderer.invoke('steam:token', {account_name: steamAccount.session?.account_name})
               .then((res)=>{
-                return window.ipcRenderer.invoke('steam:submitSteamGuard',{account_name: steamAccount.account_name, steamGuardCode: res.token})
+                return window.ipcRenderer.invoke('steam:submitSteamGuard',{account_name: steamAccount.session?.account_name, steamGuardCode: res.token})
               })
         }
         break

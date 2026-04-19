@@ -97,6 +97,20 @@ class SteamAccountAdapter implements SyncAdapter<SteamAccount> {
         this.delegate = new TextFileSync(filepath)
     }
 
+    private parseJson(content: string){
+        const temp = JSON.parse(content);
+        if (temp.shared_secret){
+            return {
+                guard: {...temp} as SteamGuard,
+                session: temp.Session || temp.session
+            }
+        } else {
+            return {
+                session: temp.Session || temp.session
+            }
+        }
+    }
+
     read() {
         const fileContent = this.delegate.read()
         if (!fileContent){
@@ -106,14 +120,14 @@ class SteamAccountAdapter implements SyncAdapter<SteamAccount> {
         // 如果没有设置密码，尝试直接按 JSON 解析
         // 场景：用户从未加密状态切换过来，或者文件本身未加密
         if (!this.passkey) {
-            return JSON.parse(fileContent);
+            return this.parseJson(fileContent)
         }
 
         // 简单校验格式，避免对非加密文件强行解密报错
         const splits = fileContent.split('/')
         if (splits.length !== 4) {
             // 可能是普通 JSON 文件，尝试直接解析，如果失败则抛出解密错
-            return JSON.parse(fileContent);
+            return this.parseJson(fileContent)
         }
 
         const iv = Buffer.from(splits[0], 'hex');
@@ -133,7 +147,7 @@ class SteamAccountAdapter implements SyncAdapter<SteamAccount> {
         let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
         decrypted += decipher.final('utf8');
 
-        return JSON.parse(decrypted)
+        return this.parseJson(decrypted)
     }
 
     write(data: SteamAccount) {
@@ -162,30 +176,8 @@ class SteamAccountAdapter implements SyncAdapter<SteamAccount> {
     }
 }
 
-class SteamAccountDbs {
-    private dbs: Map<string, SteamAccountDb>
-
-    constructor() {
-        this.dbs = new Map<string, SteamAccountDb>()
-    }
-
-    db(account_name: string, passkey?: string): SteamAccountDb {
-        if (this.dbs.has(account_name)) {
-            const db: SteamAccountDb = this.dbs.get(account_name) as SteamAccountDb;
-            db.setPasskey(passkey)
-            return db as SteamAccountDb
-        }
-        const db = new SteamAccountDb(path.join(settingsDb.data.maFilesDir, `${account_name}.maFile`), passkey)
-        this.dbs.set(account_name, db)
-        return db as SteamAccountDb
-    }
-}
-
-const steamAccountDbs = new SteamAccountDbs()
-
 export {
     settingsDb,
-    steamAccountDbs,
     SteamAccountDb,
     SettingsDb
 }

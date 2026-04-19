@@ -46,9 +46,6 @@ const handleLoginAgain = async ()=>{
 }
 const handleLoginSuccess = async (session:SteamSession)=>{
   console.log(session)
-  const steamAccount = await window.ipcRenderer.invoke('steam:account:get', {account_name: props.account_name})
-  steamAccount.Session = {...session}
-  await window.ipcRenderer.invoke('steam:account:set', {...steamAccount})
 }
 const handleLoginFailed = async (err:any)=>{
   console.log(err)

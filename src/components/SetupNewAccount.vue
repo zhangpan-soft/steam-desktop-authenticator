@@ -1,8 +1,7 @@
 <script setup lang="ts">
 
-import {reactive, ref, toRaw} from "vue";
+import {reactive, ref, computed} from "vue";
 import SteamLogin from "./SteamLogin.vue";
-import EResult from "../utils/EResult.ts";
 import {ElLoading, ElMessage, ElMessageBox, type InputInstance} from "element-plus";
 import CustomDialog from "./CustomDialog.vue";
 import { useI18n } from 'vue-i18n'
@@ -272,7 +271,20 @@ const phoneCountryCodes: {
 // endregion
 
 const phoneInputRef = ref<InputInstance>()
-const { t } = useI18n()
+const { t, locale } = useI18n()
+
+// 使用浏览器内置的 Intl.DisplayNames API 自动翻译国家/地区名称
+const localizedPhoneCountryCodes = computed(() => {
+  try {
+    const regionNames = new Intl.DisplayNames([locale.value], { type: 'region' })
+    return phoneCountryCodes.map(item => ({
+      ...item,
+      name: regionNames.of(item.id) || item.name // 如果系统接口转换失败，回退到原本硬编码的名称
+    }))
+  } catch (e) {
+    return phoneCountryCodes
+  }
+})
 
 const handleSetupNewAccount = () => {
   currentData.steamLoginModel = true
@@ -291,57 +303,6 @@ const handleAuthentication = async () => {
     background: 'rgba(0, 0, 0, 0.7)',
   })
   try {
-    if (currentData.steps === ''){
-      // 注册设备号到steam
-      currentData.deviceId = await registerMobileDevice() as string
-    }
-
-    if (currentData.steps === 'AwaitingConfirmEmail'){
-      await handleIsAccountWaitingForEmailConfirmation()
-      if (currentData.steps === 'AwaitingConfirmEmail'){
-        await sleep(2000)
-        return handleAuthentication()
-      }
-    }
-
-    // 调用添加令牌
-    const res: SteamResponse<SteamGuard> = await window.ipcRenderer.invoke('steam:TwoFactor:AddAuthenticator', {
-      ...toRaw<SteamSession>(currentData.session as SteamSession),
-      deviceId
-    })
-
-    let steamAccount: SteamAccount
-
-    if (res.eresult === EResult.DuplicateRequest) { // 已有令牌
-      await removeAuthenticatorViaChallengeStart()
-      const smsCode: string = await showSmsCodeBox()
-      const steamGuard = await removeAuthenticatorViaChallengeContinue( smsCode)
-      steamAccount = {...steamGuard, Session: {...(currentData.session as SteamSession)}}
-    } else if (res.eresult === EResult.InvalidState) {
-      if (res.response?.status === EResultEnum.Fail) {
-        // todo 需要手机号
-        currentData.phoneDialogShowed = true
-        const addPhoneRes:SteamResponse<SetAccountPhoneNumberResponse> = await window.ipcRenderer.invoke('steam:Phone:SetAccountPhoneNumber', {
-          ...toRaw<SteamSession>(currentData.session as SteamSession),
-          'phoneNumber': currentData.phoneNumber,
-          'phoneCountryCode': phoneCountryCodes.find(i => i.id === currentData.phoneCountryId)?.code
-        })
-        if (!addPhoneRes || addPhoneRes.eresult !== EResult.OK){
-          throw new Error(`Failed to add phone number.${addPhoneRes.eresult}`)
-        }
-        // addPhoneRes.response.
-
-      }
-    } else if (res.eresult === EResult.OK) { // 无令牌
-      const smsCode: string = await showSmsCodeBox()
-      steamAccount = await finalizeAddAuthenticator({...res.response, Session: {...currentData.session as SteamSession}} as SteamAccount, smsCode)
-    } else {
-      throw new Error(`Failed to add authenticator.${res.eresult}`)
-    }
-
-    // 执行公共后续步骤
-    await postLoginSetup(steamAccount)
-    ElMessage.success(t('setupNewAccount.addSuccess'))
 
   } catch (e: any) {
     ElMessage.error(e.message)
@@ -350,23 +311,6 @@ const handleAuthentication = async () => {
   }
 }
 
-
-// --- Steam Business Logic Helpers ---
-
-const registerMobileDevice = async () => {
-  const res: SteamResponse<string> = await window.ipcRenderer.invoke('steam:MobileDevice:RegisterMobileDevice', {...toRaw<SteamSession>(currentData.session as SteamSession)})
-  if (res.eresult !== EResult.OK) {
-    throw new Error(`Failed to register mobile device to steam.${res.eresult}`)
-  }
-  return res.response
-}
-
-const removeAuthenticatorViaChallengeStart = async () => {
-  const res: SteamResponse<any> = await window.ipcRenderer.invoke('steam:TwoFactor:RemoveAuthenticatorViaChallengeStart', {...toRaw<SteamSession>(currentData.session as SteamSession)})
-  if (res.eresult !== EResult.OK) {
-    throw new Error(`Failed to remove authenticator via challenge start.${res.eresult}`)
-  }
-}
 
 const showSmsCodeBox = async () => {
   const resSmsCode: any = await ElMessageBox.prompt(t('setupNewAccount.smsCodePrompt'), t('setupNewAccount.smsCodeTitle'), {
@@ -384,99 +328,11 @@ const showSmsCodeBox = async () => {
   return resSmsCode.value as string
 }
 
-const removeAuthenticatorViaChallengeContinue = async (smsCode: string): Promise<SteamGuard> => {
-  const res: SteamResponse<RemoveAuthenticatorViaChallengeContinueResponse> = await window.ipcRenderer.invoke('steam:TwoFactor:RemoveAuthenticatorViaChallengeContinue', {
-    ...toRaw<SteamSession>(currentData.session as SteamSession),
-    smsCode
-  })
-  if (res.eresult !== EResult.OK) {
-    ElMessage.error(`${t('setupNewAccount.smsCodeTitle')} verify.${res.eresult}`)
-    smsCode = await showSmsCodeBox()
-    return removeAuthenticatorViaChallengeContinue(smsCode)
-  }
-  if (!res.response || !res.response.success || !res.response.replacement_token || !res.response.replacement_token.shared_secret) {
-    throw new Error(`Failed to remove authenticator via challenge continue.${res.eresult}`)
-  }
-  return res.response.replacement_token
-}
-
-const queryStatus = async () => {
-  const res: SteamResponse<QueryStatusResponse> = await window.ipcRenderer.invoke('steam:TwoFactor:QueryStatus', {...toRaw<SteamSession>(currentData.session as SteamSession)})
-  if (res.eresult !== EResult.OK) {
-    throw new Error(`Failed to query status.${res.eresult}`)
-  }
-  return res.response
-}
-
-const finalizeAddAuthenticator = async (steamAccount: SteamAccount, smsCode: string): Promise<SteamAccount> => {
-  let tries = 0
-  while (tries <= 30) {
-    const res: SteamResponse<FinalizeAuthenticatorResponse> = await window.ipcRenderer.invoke('steam:TwoFactor:FinalizeAddAuthenticator', {
-      ...steamAccount,
-      smsCode
-    })
-    if (!res.response) {
-      continue
-    }
-    if (res.response.status === EResult.TwoFactorActivationCodeMismatch) {
-      smsCode = await showSmsCodeBox()
-      return finalizeAddAuthenticator(steamAccount, smsCode)
-    }
-    if (res.response.status === EResult.TwoFactorCodeMismatch && tries >= 30) {
-      throw new Error(`Failed to finalize add authenticator.${res.eresult}`)
-    }
-    if (!res.response.success) {
-      throw new Error(`Failed to finalize add authenticator.${res.eresult}`)
-    }
-    if (res.response.want_more) {
-      tries++
-      continue
-    }
-    steamAccount.fully_enrolled = true
-    return steamAccount
-  }
-  throw new Error(`Failed to finalize add authenticator.`)
-}
-
-// 提取公共的后续设置逻辑：保存账号 -> 更新设置 -> 获取设备ID -> 激活令牌
-const postLoginSetup = async (steamAccount: SteamAccount) => {
-  // 1. 保存当前账号数据
-  await window.ipcRenderer.invoke('steam:account:set', steamAccount)
-
-  // 2. 更新 Settings 中的 entries 列表
-  const settings: Settings = await window.ipcRenderer.invoke('settings:get')
-  const index = settings.entries.findIndex(item => item.account_name === currentData.session?.account_name)
-  if (index === -1) {
-    settings.entries.push({steamid: currentData.session?.SteamID as string, account_name: currentData.session?.account_name as string})
-    await window.ipcRenderer.invoke('settings:set', settings)
-  }
-
-  // 3. 查询状态以获取 device_identifier 并更新
-  const statusRes = await queryStatus()
-  if (statusRes?.device_identifier) {
-    steamAccount.device_id = statusRes.device_identifier
-    await window.ipcRenderer.invoke('steam:account:set', steamAccount)
-  }
-
-  // 4. 尝试获取一次确认列表以激活令牌
-  try {
-    await window.ipcRenderer.invoke('steam:getConfirmations', {account_name: currentData.session?.account_name as string})
-  } catch {
-    // 忽略激活时的错误
-  }
-}
-
 
 const handleNewAccountLoginFailed = (err: any) => {
   console.log(err)
 }
 
-const handleIsAccountWaitingForEmailConfirmation = async ()=>{
-  const res:SteamResponse<IsAccountWaitingForEmailConfirmationResponse> = await window.ipcRenderer.invoke('steam:Phone:IsAccountWaitingForEmailConfirmation', {...toRaw<SteamSession>(currentData.session as SteamSession)});
-  if (res.eresult == EResultEnum.OK && !res.response?.awaiting_email_confirmation){
-    currentData.steps = 'AwaitingSendSmsCode'
-  }
-}
 </script>
 
 <template>
@@ -501,7 +357,7 @@ const handleIsAccountWaitingForEmailConfirmation = async ()=>{
             style="width: 100px"
         >
           <el-option
-              v-for="item in phoneCountryCodes"
+            v-for="item in localizedPhoneCountryCodes"
               :key="item.id"
               :label="`${item.name} (${item.code})`"
               :value="item.id"

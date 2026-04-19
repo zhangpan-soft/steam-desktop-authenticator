@@ -4,8 +4,9 @@ import path from "node:path";
 import {readMaFile} from "../ma-file.ts";
 import windowManager from "../window-manager.ts";
 import ipcMainHandler from "./index.ts";
-import {settingsDb, steamAccountDbs} from "../db";
+import {settingsDb} from "../db";
 import runtimeContext from "../utils/runtime-context.ts";
+import {getSteamModel} from "../steam/models";
 
 
 ipcMainHandler
@@ -85,22 +86,20 @@ ipcMainHandler
                 settingsDb.update() // 更新settings
                 settingsDb.data.entries.forEach((item) => {
                     // 按未加密读取数据
-                    const db = steamAccountDbs.db(item.account_name)
+                    getSteamModel(item.account_name).setPasskey(args.passkey)
                     // 设置加密
-                    db.setPasskey(args.passkey)
                 })
             } else { // 如果已加密
                 if (!runtimeContext.passkey) { // 如果当前运行时还未设置密码
                     if (settingsDb.data.entries.length>0){
                         // 获取一次已存在数据, 如果获取失败, 则说明密码不正确
-                        steamAccountDbs.db(settingsDb.data.entries[0].account_name, args.passkey)
+                        getSteamModel(settingsDb.data.entries[0].account_name, args.passkey)
                     }
                 } else { // 如果运行时已存在密码,证明是修改密码
                     settingsDb.data.entries.forEach((item) => {
                         // 使用老密码读取数据
-                        const db = steamAccountDbs.db(item.account_name, runtimeContext.passkey)
+                        getSteamModel(item.account_name).setPasskey(args.passkey)
                         // 设置新密码
-                        db.setPasskey(args.passkey)
                     })
                 }
             }

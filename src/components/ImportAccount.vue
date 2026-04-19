@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {reactive, ref, toRaw} from "vue";
+import {reactive, ref} from "vue";
 import SteamLogin from "./SteamLogin.vue";
 import CustomDialog from "./CustomDialog.vue";
 import {Hide, Lock, Unlock, View} from "@element-plus/icons-vue";
@@ -29,14 +29,7 @@ const steamLoginRef = ref<InstanceType<typeof SteamLogin>>()
 
 const events = {
   async handleLoginSuccess(session: SteamSession){
-    currentData.steamAccount.Session = session
-    await window.ipcRenderer.invoke('steam:account:set', {...toRaw<SteamAccount>(currentData.steamAccount)})
-    const settings:Settings = await window.ipcRenderer.invoke('settings:get')
-    const index = settings.entries.findIndex(item=> item.account_name === currentData.steamAccount.account_name)
-    if (index===-1){
-      settings.entries.push({steamid: currentData.steamAccount.Session.SteamID, account_name: currentData.steamAccount.account_name})
-    }
-    await window.ipcRenderer.invoke('settings:set', settings)
+    currentData.steamAccount = await window.ipcRenderer.invoke('steam:account:get', {...session})
     ElMessage.success(t('import.importSuccess'))
     show.value = false
   },
@@ -141,8 +134,8 @@ const events = {
   <SteamLogin
       v-if="currentData.loginModelShow"
       ref="steamLoginRef"
-      :account_name="currentData.steamAccount.account_name"
-      :shared_secret="currentData.steamAccount.shared_secret"
+      :account_name="currentData.steamAccount.session?.account_name"
+      :shared_secret="currentData.steamAccount.guard?.shared_secret"
       v-model:show="currentData.loginModelShow"
       @success="events.handleLoginSuccess"
       @failed="events.handleLoginFailed"

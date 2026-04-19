@@ -38,7 +38,6 @@ type ElectronMessageChannel =
     | 'context:get'
     | 'context:set'
     | SteamMessageChannel
-    | DatabaseMessageChannel
 
 type SteamMessageChannel =
     'steam:login'
@@ -50,22 +49,7 @@ type SteamMessageChannel =
     | 'steam:token'
     | 'steam:generateCode'
     | 'steam:account:get'
-    | 'steam:account:set'
-    | 'steam:MobileDevice:RegisterMobileDevice'
-    | 'steam:TwoFactor:AddAuthenticator'
-    | 'steam:TwoFactor:FinalizeAddAuthenticator'
-    | 'steam:TwoFactor:RemoveAuthenticator'
-    | 'steam:TwoFactor:RemoveAuthenticatorViaChallengeContinue'
-    | 'steam:TwoFactor:RemoveAuthenticatorViaChallengeStart'
-    | 'steam:TwoFactor:QueryStatus'
     | 'steam:confirmations:respond'
-    | 'steam:Phone:ConfirmAddPhoneToAccount'
-    | 'steam:Phone:IsAccountWaitingForEmailConfirmation'
-    | 'steam:Phone:SendPhoneVerificationCode'
-    | 'steam:Phone:SetAccountPhoneNumber'
-    | 'steam:Phone:VerifyAccountPhoneWithCode'
-
-type DatabaseMessageChannel = 'database:steamAccount:get'
 
 type WindowHashType = '/' | '/steam/confirmations'
 
@@ -75,6 +59,21 @@ type WindowUri = {
 }
 
 type SteamLoginType = 'NewAccount' | 'ImportSda' | 'RefreshToken' | 'ReLogin'
+type TwoFactorState =
+    'ConfirmationEmailSent'
+    | 'AwaitingConfirmEmail'
+    | 'GeneralFailure'
+    | 'AuthenticatorPresent'
+    | 'AwaitingRemoveChallengeContinue'
+    | 'Success'
+    | 'NeedPhoneNumber'
+    | 'FailureRegisterDevice'
+    | 'FailureAddingPhone'
+    | 'NeedSmsCode'
+    | 'AwaitingFinalizeAddAuthenticator'
+    | 'AwaitingFinalizeAddAuthenticatorBadSmsCode'
+    | 'UnableToGenerateCorrectCodes'
+    | 'SessionExpired'
 
 // Used in Renderer process, expose in `preload.ts`
 interface Window {
@@ -207,12 +206,11 @@ interface Settings {
 
 interface RuntimeContext {
     passkey?: string
-    timeOffset: number
-    timeNextSyncTime: number
 }
 
-interface SteamAccount extends SteamGuard {
-    Session?: SteamSession
+interface SteamAccount{
+    session?: SteamSession
+    guard?: SteamGuard
 }
 
 interface SteamSession {
@@ -223,14 +221,14 @@ interface SteamSession {
     cookies: string
     at: number
     rt: number
-    SessionID: string
+    session_id: string
 }
 
 // 定义发送给前端的消息结构
 interface SteamLoginEvent {
     account_name: string;      // 关键：必须带上账号名，前端才知道是哪个账号
     result: EResult;           // 结果代码
-    status?: 'LoginSuccess' | 'Need2FA' | 'Converting' | 'Failed' | 'Timeout'; // 状态描述
+    status?: 'LoginSuccess' | 'Need2FA' | 'Converting' | 'Failed' | 'Timeout' | 'NoAccountName' | 'Unknown'; // 状态描述
     data?: SteamSession;                // 成功时的 Cookies/Token 数据
     error_message?: string;    // 错误信息
     valid_actions?: {
@@ -363,7 +361,7 @@ interface SetAccountPhoneNumberResponse {
     phone_number_formatted: string
 }
 
-interface IsAccountWaitingForEmailConfirmationResponse{
+interface IsAccountWaitingForEmailConfirmationResponse {
     awaiting_email_confirmation: boolean
     seconds_to_wait: number
 }
