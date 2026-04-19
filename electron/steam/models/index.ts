@@ -515,7 +515,7 @@ class SteamAccountModel implements SteamAccount {
             this.db.data.guard = this.guard
         }
         this.db.update()
-        if (!this.inSettings) {
+        if (!this.inSettings && this.guard) {
             settingsDb.data.entries.push({
                 account_name: this.session?.account_name || '',
                 steamid: this.session?.SteamID || ''
@@ -544,7 +544,7 @@ class SteamAccountModel implements SteamAccount {
             identitySecret: this.guard.identity_secret,
             tag: 'detail',
             p: this.guard.device_id,
-            a: this.guard.steamid
+            a: this.session?.SteamID || '0'
         })
         return GotHttpApiRequest.get(`${COMMUNITY_ENDPOINTS.confirmationDetail}${confirmationId}`)
             .params(ret)
@@ -569,6 +569,7 @@ class SteamAccountModel implements SteamAccount {
     }
 
     async getConfirmations() {
+        console.log(this.session, this.guard)
         if (!this.guard || !await this.checkSession()) {
             return {
                 eresult: EResult.Fail,
@@ -581,7 +582,7 @@ class SteamAccountModel implements SteamAccount {
             tag: 'list',
             identitySecret: this.guard.identity_secret,
             p: this.guard.device_id,
-            a: this.guard.steamid
+            a: this.session?.SteamID || '0'
         })
         return GotHttpApiRequest.get(COMMUNITY_ENDPOINTS.confirmations)
             .params(params)
@@ -806,7 +807,7 @@ class SteamAccountModel implements SteamAccount {
             identitySecret: this.guard.identity_secret,
             tag: tag,
             p: this.guard.device_id,
-            a: this.guard.steamid
+            a: this.session?.SteamID || '0'
         })
         ret.cid = confirmation.id
         ret.op = op

@@ -281,7 +281,6 @@ interface SteamGuard {
     status: number
     device_id: string
     fully_enrolled: boolean
-    steamid: string
 }
 
 interface FinalizeAuthenticatorResponse {

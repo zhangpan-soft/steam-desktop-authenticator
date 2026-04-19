@@ -101,12 +101,26 @@ class SteamAccountAdapter implements SyncAdapter<SteamAccount> {
         const temp = JSON.parse(content);
         if (temp.shared_secret){
             return {
-                guard: {...temp} as SteamGuard,
+                guard: {
+                    shared_secret: temp.shared_secret,
+                    serial_number: temp.serial_number,
+                    revocation_code: temp.revocation_code,
+                    uri: temp.uri,
+                    server_time: temp.server_time,
+                    account_name: temp.account_name,
+                    token_gid: temp.token_gid,
+                    identity_secret: temp.identity_secret,
+                    secret_1: temp.secret_1,
+                    status: temp.status,
+                    device_id: temp.device_id,
+                    fully_enrolled: temp.fully_enrolled,
+                },
                 session: temp.Session || temp.session
             }
         } else {
             return {
-                session: temp.Session || temp.session
+                session: temp.Session || temp.session,
+                guard: temp.guard
             }
         }
     }
