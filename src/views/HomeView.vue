@@ -9,6 +9,7 @@ import SetupEncryption from "../components/SetupEncryption.vue";
 import SteamToken from "../components/SteamToken.vue";
 import ViewConfirmations from "../components/ViewConfirmations.vue";
 import SteamAccountList from "../components/SteamAccountList.vue";
+import pkg from '../../package.json';
 
 type CurrentDataType = {
   account: EntryType,
@@ -82,7 +83,7 @@ onUnmounted(() => {
     <el-footer>
       <el-row justify="space-between" align="middle" style="height: 100%; padding: 0 5px;">
         <el-text size="small">{{ t('home.checkForUpdates') }}</el-text>
-        <el-text size="small">v0.1.3</el-text>
+        <el-text size="small">v{{ pkg.version }}</el-text>
       </el-row>
     </el-footer>
   </el-container>

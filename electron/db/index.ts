@@ -40,6 +40,7 @@ class SettingsDb {
 
     update() {
         this.db.data = {...this.db.data, ...this.data}
+        console.log('settings#update',this.db.data)
         this.db.write()
         this.data = this.db.data
     }
@@ -98,8 +99,11 @@ class SteamAccountAdapter implements SyncAdapter<SteamAccount> {
     }
 
     private parseJson(content: string){
+
+        console.log(`content:${content}`)
         const temp = JSON.parse(content);
         if (temp.shared_secret){
+            console.log(`temp1:${JSON.stringify(temp)}`)
             return {
                 guard: {
                     shared_secret: temp.shared_secret,
@@ -118,6 +122,7 @@ class SteamAccountAdapter implements SyncAdapter<SteamAccount> {
                 session: temp.Session || temp.session
             }
         } else {
+            console.log(`temp2:${JSON.stringify(temp)}`)
             return {
                 session: temp.Session || temp.session,
                 guard: temp.guard

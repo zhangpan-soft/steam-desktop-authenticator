@@ -446,22 +446,24 @@ class SteamAccountModel implements SteamAccount {
 
     phone: SteamPhoneModel
 
-    inSettings: boolean = false
-
     private db: SteamAccountDb
 
     constructor(account_name: string, passkey?: string) {
+
+        console.log(`account_name:${account_name}`)
+
         this.db = new SteamAccountDb(path.join(settingsDb.data.maFilesDir, `${account_name}.maFile`), passkey)
         this.session = this.db.data.session
         this.guard = this.db.data.guard
-
-        this.inSettings = settingsDb.data.entries.findIndex(value => value.account_name === account_name) >= 0
 
         this.login = new SteamLoginModel(account_name)
         this.mobileDevice = new SteamMobileDeviceModel(this.session)
         this.phone = new SteamPhoneModel(this.session)
 
         this.login.on('login-status', (event: SteamLoginEvent) => {
+
+            console.log('login-status', event)
+
             if (event.status === 'LoginSuccess' && event.data) {
                 this.session = {...event.data}
                 this.save()
@@ -474,6 +476,8 @@ class SteamAccountModel implements SteamAccount {
         })
 
         this.checkSession().then()
+
+        console.log(`session:${JSON.stringify(this.session)},guard:${JSON.stringify(this.guard)}`)
 
         setInterval(() => {
             this.checkSession().then()
@@ -515,14 +519,6 @@ class SteamAccountModel implements SteamAccount {
             this.db.data.guard = this.guard
         }
         this.db.update()
-        if (!this.inSettings && this.guard) {
-            settingsDb.data.entries.push({
-                account_name: this.session?.account_name || '',
-                steamid: this.session?.SteamID || ''
-            })
-            settingsDb.update()
-            this.inSettings = true
-        }
     }
 
     async generateAuthCode(shared_secret?: string) {

@@ -30,6 +30,17 @@ const steamLoginRef = ref<InstanceType<typeof SteamLogin>>()
 const events = {
   async handleLoginSuccess(session: SteamSession){
     currentData.steamAccount = await window.ipcRenderer.invoke('steam:account:get', {...session})
+    console.log('------------', currentData.steamAccount)
+    await window.ipcRenderer.invoke('settings:get',)
+        .then((settings:Settings)=>{
+          if (settings.entries.findIndex(value => value.account_name === session.account_name && value.steamid === session.SteamID)<0){
+            settings.entries.push({
+              account_name: session.account_name,
+              steamid: session.SteamID,
+            })
+          }
+          return window.ipcRenderer.invoke('settings:set', settings)
+        })
     ElMessage.success(t('import.importSuccess'))
     show.value = false
   },
@@ -134,7 +145,7 @@ const events = {
   <SteamLogin
       v-if="currentData.loginModelShow"
       ref="steamLoginRef"
-      :account_name="currentData.steamAccount.session?.account_name"
+      :account_name="currentData.steamAccount.session?.account_name || currentData.steamAccount.guard?.account_name"
       :shared_secret="currentData.steamAccount.guard?.shared_secret"
       v-model:show="currentData.loginModelShow"
       @success="events.handleLoginSuccess"
