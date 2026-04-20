@@ -79,7 +79,14 @@
     "loadingText": "Setting up new account...",
     "addSuccess": "Authenticator added successfully",
     "smsCodeTitle": "Sms Code",
-    "smsCodePrompt": "Please Input Sms Code"
+    "smsCodePrompt": "Please Input Sms Code",
+    "phoneEmpty": "Please input phone number",
+    "addFailed": "Add authenticator failed",
+    "failureRegisterDevice": "Failed to register device, please try again later.",
+    "badSmsCode": "Incorrect SMS code",
+    "unhandledState": "Unhandled state: {state}",
+    "phoneTitle": "Set Phone Number",
+    "phonePlaceholder": "Please input phone number"
   },
   "confirmations": {
     "title": "Confirmations",

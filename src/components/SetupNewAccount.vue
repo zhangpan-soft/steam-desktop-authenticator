@@ -1,30 +1,22 @@
 <script setup lang="ts">
 
-import {reactive, ref, computed} from "vue";
+import {reactive, computed} from "vue";
 import SteamLogin from "./SteamLogin.vue";
-import {ElLoading, ElMessage, ElMessageBox, type InputInstance} from "element-plus";
+import {ElLoading, ElMessage, ElMessageBox} from "element-plus";
 import CustomDialog from "./CustomDialog.vue";
 import {useI18n} from 'vue-i18n'
 
 const currentData = reactive<{
   steamLoginModel: boolean
   phoneDialogShowed: boolean
-  phoneDialogLoading: boolean
-  phoneSmsCode: string
   phoneCountryId: string
   phoneNumber: string
   session?: SteamSession
-  steps: '' | 'AwaitingConfirmEmail' | 'GeneralFailure' | 'AwaitingProvidePhoneNumber' | 'AuthenticatorPresent' | 'AwaitingFinalization' | 'AwaitingSendSmsCode'
-  deviceId: string
 }>({
   steamLoginModel: false,
   phoneDialogShowed: false,
-  phoneDialogLoading: false,
-  phoneSmsCode: '',
   phoneCountryId: 'CN',
   phoneNumber: '',
-  steps: '',
-  deviceId: '',
 })
 // region
 const phoneCountryCodes: {
@@ -270,7 +262,6 @@ const phoneCountryCodes: {
 ];
 // endregion
 
-const phoneInputRef = ref<InputInstance>()
 const {t, locale} = useI18n()
 
 // 使用浏览器内置的 Intl.DisplayNames API 自动翻译国家/地区名称
@@ -286,12 +277,46 @@ const localizedPhoneCountryCodes = computed(() => {
   }
 })
 
+// --- 手机号对话框的 Promise 封装 ---
+let phoneResolve: ((val: { code: string, number: string } | null) => void) | null = null;
+
+const showPhoneDialog = () => {
+  currentData.phoneNumber = ''
+  currentData.phoneDialogShowed = true
+  return new Promise<{ code: string, number: string } | null>((resolve) => {
+    phoneResolve = resolve
+  })
+}
+
+const onPhoneConfirm = () => {
+  if (!currentData.phoneNumber) {
+    ElMessage.warning(t('setupNewAccount.phoneEmpty', 'Please input phone number'))
+    return
+  }
+  currentData.phoneDialogShowed = false
+  if (phoneResolve) {
+    const country = phoneCountryCodes.find(i => i.id === currentData.phoneCountryId)
+    phoneResolve({
+      code: country?.code || '+86',
+      number: currentData.phoneNumber
+    })
+    phoneResolve = null
+  }
+}
+
+const onPhoneCancel = () => {
+  currentData.phoneDialogShowed = false
+  if (phoneResolve) {
+    phoneResolve(null)
+    phoneResolve = null
+  }
+}
+
 const handleSetupNewAccount = () => {
   currentData.steamLoginModel = true
 }
 
 const handleNewAccountLoginSuccess = async (session: SteamSession) => {
-  console.log(session)
   currentData.session = session
   await handleAuthentication()
 }
@@ -314,31 +339,52 @@ const handleAuthentication = async () => {
 const addAuthenticator = async (args: any) => {
   const state: TwoFactorState = await window.ipcRenderer.invoke('steam:addAuthenticator', {...currentData.session, ...args})
   if (!state) {
-    ElMessage.error('添加失败')
+    ElMessage.error(t('setupNewAccount.addFailed', 'Add authenticator failed'))
     return
   }
   switch (state) {
       // 登录过期
     case "SessionExpired": {
-      // todo 打开登录弹框, 结束
+      ElMessage.warning(t('steamLogin.loginFailedRetry', { result: 'Session Expired' }))
+      currentData.steamLoginModel = true
       return
     }
     case "FailureRegisterDevice": {
-      // todo 提示设备号注册失败, 稍后重试, 结束
+      ElMessage.error(t('setupNewAccount.failureRegisterDevice', 'Failed to register device, please try again later.'))
       return
     }
     case "NeedChallengeSmsCode":
     case "BadChallengeSmsCode":
     case "AwaitingRemoveChallengeContinue": {
-      // todo 打开手机验证码输入框
-      // todo 同步等待
-      // todo 用户输完验证码点击确认后, 再次递归, 要换成实际拿到的验证码
-      return addAuthenticator({smsCode: ''})
+      if (state === "BadChallengeSmsCode") {
+        ElMessage.error(t('setupNewAccount.badSmsCode', 'Incorrect SMS code'))
+      }
+      try {
+        const smsCode = await showSmsCodeBox()
+        return await addAuthenticator({ smsCode })
+      } catch (e) {
+        ElMessage.info(t('dialog.cancel'))
+        return
+      }
     }
     case "NeedPhoneNumber":{
-      // todo 打开手机号输入框, 带地区选择
-      // todo 同步等待
-      // todo 用户输入完手机号点击确认后,
+      const phoneData = await showPhoneDialog()
+      if (!phoneData) {
+        ElMessage.info(t('dialog.cancel'))
+        return
+      }
+      return await addAuthenticator({
+        phoneNumber: phoneData.number,
+        phoneCountryCode: phoneData.code
+      })
+    }
+    case "Success": {
+      ElMessage.success(t('setupNewAccount.addSuccess'))
+      return
+    }
+    default: {
+      ElMessage.info(t('setupNewAccount.unhandledState', `Unhandled state: ${state}`))
+      return
     }
   }
 }
@@ -362,7 +408,6 @@ const showSmsCodeBox = async () => {
 
 
 const handleNewAccountLoginFailed = (err: any) => {
-  console.log(err)
 }
 
 </script>
@@ -373,9 +418,13 @@ const handleNewAccountLoginFailed = (err: any) => {
   <SteamLogin v-if="currentData.steamLoginModel" v-model:show="currentData.steamLoginModel"
               @success="handleNewAccountLoginSuccess" @failed="handleNewAccountLoginFailed"/>
 
-  <CustomDialog :show="currentData.phoneDialogShowed" :loading="currentData.phoneDialogLoading">
+  <CustomDialog 
+      v-model:show="currentData.phoneDialogShowed" 
+      :title="t('setupNewAccount.phoneTitle', 'Set Phone Number')"
+      @confirm="onPhoneConfirm"
+      @cancel="onPhoneCancel"
+  >
     <el-input
-        ref="phoneInputRef"
         :placeholder="t('setupNewAccount.phonePlaceholder')"
         v-model="currentData.phoneNumber"
         size="small"

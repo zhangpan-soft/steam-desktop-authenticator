@@ -79,7 +79,14 @@
     "loadingText": "正在设置新账户...",
     "addSuccess": "验证器添加成功",
     "smsCodeTitle": "短信验证码",
-    "smsCodePrompt": "请输入短信验证码"
+    "smsCodePrompt": "请输入短信验证码",
+    "phoneEmpty": "请输入手机号",
+    "addFailed": "添加验证器失败",
+    "failureRegisterDevice": "注册设备失败，请稍后重试。",
+    "badSmsCode": "短信验证码不正确",
+    "unhandledState": "未处理的状态: {state}",
+    "phoneTitle": "设置手机号",
+    "phonePlaceholder": "请输入手机号"
   },
   "confirmations": {
     "title": "确认项",
