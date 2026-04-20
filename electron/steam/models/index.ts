@@ -594,145 +594,160 @@ class SteamAccountModel implements SteamAccount {
             .catch(reason => parseErrorResult<ConfirmationsResponse>(reason))
     }
 
-
-    async addAuthenticator(): Promise<void> {
-
-        const proxy = settingsDb.data.proxy
-
+    private async _challengeAuthenticatorStart(): Promise<void>{
         if (!this.session || !await this.checkSession()) {
             this.state = 'SessionExpired'
             return
         }
+        const removeStartRes = await GotHttpApiRequest.post(getEndpoints('TwoFactor', 'RemoveAuthenticatorViaChallengeStart', 1))
+            .param(ACCESS_TOKEN_NAME, this.session.access_token)
+            .data(STEAM_ID_NAME, parseToken(this.session.access_token).payload.sub)
+            .data()
+            .requestConfig({timeout: settingsDb.data.timeout, proxies: settingsDb.data.proxy})
+            .userAgent(DEFAULT_USER_AGENT)
+            .perform()
+            .then(res => parseSteamResult<any>(res))
+            .catch(reason => parseErrorResult(reason))
 
-        if (!this.mobileDevice.flag) {
-            await this.mobileDevice.registerMobileDevice()
-            if (!this.mobileDevice.flag) {
-                this.state = 'FailureRegisterDevice'
-                return
-            }
+        if (!removeStartRes.response || removeStartRes.eresult !== EResult.OK) {
+            this.state = 'GeneralFailure'
+            return
+        }
+        this.state = 'AwaitingRemoveChallengeContinue'
+        return
+    }
+
+    private async _challengeAuthenticatorContinue(): Promise<void>{
+        if (!this.session || !await this.checkSession()) {
+            this.state = 'SessionExpired'
+            return
+        }
+        if (!this.smsCode) {
+            this.state = 'NeedChallengeSmsCode'
+            return
         }
 
-        if (this.state === 'AwaitingRemoveChallengeContinue') {
+        const removeAuthenticatorViaChallengeContinueRes = await GotHttpApiRequest.post(getEndpoints('TwoFactor', 'RemoveAuthenticatorViaChallengeContinue', 1))
+            .param(ACCESS_TOKEN_NAME, this.session.access_token)
+            .data(STEAM_ID_NAME, parseToken(this.session.access_token).payload.sub)
+            .data(DATA_SMS_CODE_NAME, this.smsCode)
+            .data(DATA_GENERATE_NEW_TOKEN_NAME, true)
+            .data()
+            .requestConfig({timeout: settingsDb.data.timeout, proxies: settingsDb.data.proxy})
+            .userAgent(DEFAULT_USER_AGENT)
+            .perform()
+            .then(res => parseSteamResult<RemoveAuthenticatorViaChallengeContinueResponse>(res))
+            .catch(reason => parseErrorResult<RemoveAuthenticatorViaChallengeContinueResponse>(reason))
+
+        if (!removeAuthenticatorViaChallengeContinueRes.response) {
+            this.state = 'GeneralFailure'
+            return
+        }
+
+        if (removeAuthenticatorViaChallengeContinueRes.eresult === EResult.SMSCodeFailed || removeAuthenticatorViaChallengeContinueRes.eresult === EResult.TwoFactorActivationCodeMismatch){
+            this.state = 'BadChallengeSmsCode'
+            return
+        }
+
+        if (removeAuthenticatorViaChallengeContinueRes.eresult !== EResult.OK){
+            this.state = 'GeneralFailure'
+            return
+        }
+
+        if (!removeAuthenticatorViaChallengeContinueRes.response.success || !removeAuthenticatorViaChallengeContinueRes.response.replacement_token) {
+            this.state = 'GeneralFailure'
+            return
+        }
+
+        if (!removeAuthenticatorViaChallengeContinueRes.response.replacement_token.shared_secret) {
+            this.state = 'GeneralFailure'
+            return
+        }
+
+        this.guard = {...removeAuthenticatorViaChallengeContinueRes.response.replacement_token}
+        if (!this.guard.device_id) {
+            this.guard.device_id = this.mobileDevice.deviceId as string
+        }
+        this.save()
+        this.state = 'Success'
+        return
+    }
+
+    private async _addPhoneNumber(): Promise<void>{
+        if (!this.phone.phoneNumber || !this.phone.phoneCountryCode) {
+            this.state = 'NeedPhoneNumber'
+            return
+        }
+        const res = await this.phone.SetAccountPhoneNumber()
+        if (res.eresult !== EResult.OK) {
+            this.state = 'FailureAddingPhone'
+            return
+        } else {
+            this.state = 'AwaitingConfirmEmail'
+            return
+        }
+    }
+
+    private async _finalizeAddAuthenticator(){
+        if (!this.session || !await this.checkSession()) {
+            this.state = 'SessionExpired'
+            return
+        }
+        let tries = 0
+        while (tries <= 10) {
             if (!this.smsCode) {
-                this.state = 'NeedSmsCode'
+                this.state = 'AwaitingFinalizeAddAuthenticatorBadSmsCode'
                 return
             }
-
-            const removeAuthenticatorViaChallengeContinueRes = await GotHttpApiRequest.post(getEndpoints('TwoFactor', 'RemoveAuthenticatorViaChallengeContinue', 1))
+            const res = await GotHttpApiRequest.post(getEndpoints('TwoFactor', 'FinalizeAddAuthenticator', 1))
                 .param(ACCESS_TOKEN_NAME, this.session.access_token)
                 .data(STEAM_ID_NAME, parseToken(this.session.access_token).payload.sub)
-                .data(DATA_SMS_CODE_NAME, this.smsCode)
-                .data(DATA_GENERATE_NEW_TOKEN_NAME, true)
+                .data(DATA_ACTIVATION_CODE_NAME, this.smsCode)
+                .data(DATA_AUTHENTICATOR_CODE_NAME, await this.generateAuthCode())
+                .data(DATA_AUTHENTICATOR_TIME_NAME, await SteamTimeSync.instance.getTime() + '')
                 .data()
-                .requestConfig({timeout: settingsDb.data.timeout, proxies: proxy})
+                .requestConfig({timeout: settingsDb.data.timeout, proxies: settingsDb.data.proxy})
                 .userAgent(DEFAULT_USER_AGENT)
                 .perform()
-                .then(res => parseSteamResult<RemoveAuthenticatorViaChallengeContinueResponse>(res))
-                .catch(reason => parseErrorResult<RemoveAuthenticatorViaChallengeContinueResponse>(reason))
-
-            if (!removeAuthenticatorViaChallengeContinueRes.response || removeAuthenticatorViaChallengeContinueRes.eresult !== EResult.OK) {
+                .then(res => parseSteamResult<FinalizeAuthenticatorResponse>(res))
+                .catch(reason => parseErrorResult<FinalizeAuthenticatorResponse>(reason))
+            if (!res.response) {
                 this.state = 'GeneralFailure'
                 return
             }
-
-            if (!removeAuthenticatorViaChallengeContinueRes.response.success || !removeAuthenticatorViaChallengeContinueRes.response.replacement_token) {
+            if (res.response.status == EResult.TwoFactorActivationCodeMismatch) {
+                this.state = 'AwaitingFinalizeAddAuthenticatorBadSmsCode'
+                return
+            }
+            if (res.response.status == EResult.TwoFactorCodeMismatch) {
+                if (tries >= 10) {
+                    this.state = 'UnableToGenerateCorrectCodes'
+                    return
+                }
+            }
+            if (!res.response.success) {
                 this.state = 'GeneralFailure'
                 return
             }
-
-            if (!removeAuthenticatorViaChallengeContinueRes.response.replacement_token.shared_secret) {
-                this.state = 'GeneralFailure'
-                return
+            if (res.response.want_more) {
+                tries++
+                continue
             }
-
-            this.guard = {...removeAuthenticatorViaChallengeContinueRes.response.replacement_token}
-            if (!this.guard.device_id) {
-                this.guard.device_id = this.mobileDevice.deviceId as string
+            if (this.guard) {
+                this.guard.fully_enrolled = true
             }
-            this.save()
             this.state = 'Success'
+            this.save()
             return
         }
+        return
+    }
 
-        if (this.state === 'NeedPhoneNumber') {
-            if (!this.phone.phoneNumber || !this.phone.phoneCountryCode) {
-                this.state = 'NeedPhoneNumber'
-                return
-            }
-            const res = await this.phone.SetAccountPhoneNumber()
-            if (res.eresult !== EResult.OK) {
-                this.state = 'FailureAddingPhone'
-                return
-            } else {
-                this.state = 'AwaitingConfirmEmail'
-                return
-            }
-        }
-
-        if (this.state === 'AwaitingConfirmEmail') {
-            const res = await this.phone.IsAccountWaitingForEmailConfirmation()
-            if (res.eresult !== EResult.OK) {
-                this.state = 'AwaitingConfirmEmail'
-                return
-            }
-            if (!res.response || res.response.awaiting_email_confirmation) {
-                this.state = 'AwaitingConfirmEmail'
-                return
-            }
-        }
-
-        if (this.state === 'AwaitingFinalizeAddAuthenticator' || this.state === 'AwaitingFinalizeAddAuthenticatorBadSmsCode') {
-            let tries = 0
-            while (tries <= 10) {
-                if (!this.smsCode) {
-                    this.state = 'AwaitingFinalizeAddAuthenticatorBadSmsCode'
-                    return
-                }
-                const res = await GotHttpApiRequest.post(getEndpoints('TwoFactor', 'FinalizeAddAuthenticator', 1))
-                    .param(ACCESS_TOKEN_NAME, this.session.access_token)
-                    .data(STEAM_ID_NAME, parseToken(this.session.access_token).payload.sub)
-                    .data(DATA_ACTIVATION_CODE_NAME, this.smsCode)
-                    .data(DATA_AUTHENTICATOR_CODE_NAME, await this.generateAuthCode())
-                    .data(DATA_AUTHENTICATOR_TIME_NAME, await SteamTimeSync.instance.getTime() + '')
-                    .data()
-                    .requestConfig({timeout: settingsDb.data.timeout, proxies: settingsDb.data.proxy})
-                    .userAgent(DEFAULT_USER_AGENT)
-                    .perform()
-                    .then(res => parseSteamResult<FinalizeAuthenticatorResponse>(res))
-                    .catch(reason => parseErrorResult<FinalizeAuthenticatorResponse>(reason))
-                if (!res.response) {
-                    this.state = 'GeneralFailure'
-                    return
-                }
-                if (res.response.status == EResult.TwoFactorActivationCodeMismatch) {
-                    this.state = 'AwaitingFinalizeAddAuthenticatorBadSmsCode'
-                    return
-                }
-                if (res.response.status == EResult.TwoFactorCodeMismatch) {
-                    if (tries >= 10) {
-                        this.state = 'UnableToGenerateCorrectCodes'
-                        return
-                    }
-                }
-                if (!res.response.success) {
-                    this.state = 'GeneralFailure'
-                    return
-                }
-                if (res.response.want_more) {
-                    tries++
-                    continue
-                }
-                if (this.guard) {
-                    this.guard.fully_enrolled = true
-                }
-                this.state = 'Success'
-                await this.save()
-                return
-            }
+    private async _addAuthenticator(){
+        if (!this.session || !await this.checkSession()) {
+            this.state = 'SessionExpired'
             return
         }
-
-
         const res = await GotHttpApiRequest.post(getEndpoints('TwoFactor', 'AddAuthenticator', 1))
             .param(ACCESS_TOKEN_NAME, this.session.access_token)
             .data(STEAM_ID_NAME, parseToken(this.session.access_token).payload.sub)
@@ -740,7 +755,7 @@ class SteamAccountModel implements SteamAccount {
             .data(DATA_SMS_PHONE_ID_NAME, DEFAULT_DATA_SMS_PHONE_ID_VALUE)
             .data(DATA_DEVICE_IDENTIFIER_NAME, this.mobileDevice.deviceId)
             .data()
-            .requestConfig({timeout: settingsDb.data.timeout, proxies: proxy})
+            .requestConfig({timeout: settingsDb.data.timeout, proxies: settingsDb.data.proxy})
             .userAgent(DEFAULT_USER_AGENT)
             .perform()
             .then(res => parseSteamResult<SteamGuard>(res))
@@ -754,22 +769,7 @@ class SteamAccountModel implements SteamAccount {
         switch (res.eresult) {
             case EResult.DuplicateRequest: {
                 this.state = 'AuthenticatorPresent'
-                const removeStartRes = await GotHttpApiRequest.post(getEndpoints('TwoFactor', 'RemoveAuthenticatorViaChallengeStart', 1))
-                    .param(ACCESS_TOKEN_NAME, this.session.access_token)
-                    .data(STEAM_ID_NAME, parseToken(this.session.access_token).payload.sub)
-                    .data()
-                    .requestConfig({timeout: settingsDb.data.timeout, proxies: proxy})
-                    .userAgent(DEFAULT_USER_AGENT)
-                    .perform()
-                    .then(res => parseSteamResult<any>(res))
-                    .catch(reason => parseErrorResult(reason))
-
-                if (!removeStartRes.response || removeStartRes.eresult !== EResult.OK) {
-                    this.state = 'GeneralFailure'
-                    return
-                }
-                this.state = 'AwaitingRemoveChallengeContinue'
-                return
+                return this._challengeAuthenticatorStart()
             }
             case EResult.InvalidParam: {
                 if (res.response.status == EResult.Fail) {
@@ -782,7 +782,6 @@ class SteamAccountModel implements SteamAccount {
                 return
             }
             case EResult.OK: {
-
                 this.guard = {...res.response}
                 this.state = 'AwaitingFinalizeAddAuthenticator'
                 this.save()
@@ -792,6 +791,60 @@ class SteamAccountModel implements SteamAccount {
                 this.state = 'GeneralFailure'
             }
         }
+    }
+
+    async addAuthenticator(): Promise<void> {
+
+        // 检查session
+        if (!this.session || !await this.checkSession()) {
+            this.state = 'SessionExpired'
+            return
+        }
+
+        // 检查设备号是否注册
+        if (!this.mobileDevice.flag) {
+            await this.mobileDevice.registerMobileDevice()
+            if (!this.mobileDevice.flag) {
+                this.state = 'FailureRegisterDevice'
+                return
+            }
+        }
+
+        // 继续移动
+        if (this.state === 'AwaitingRemoveChallengeContinue' || this.state === 'NeedChallengeSmsCode' || this.state === 'BadChallengeSmsCode') {
+            return this._challengeAuthenticatorContinue()
+        }
+
+        // 添加手机号
+        if (this.state === 'NeedPhoneNumber') {
+            return this._addPhoneNumber()
+        }
+
+        // 检查是否邮箱确认
+        if (this.state === 'AwaitingConfirmEmail') {
+            const res = await this.phone.IsAccountWaitingForEmailConfirmation()
+            if (res.eresult !== EResult.OK) {
+                this.state = 'AwaitingConfirmEmail'
+                return
+            }
+            if (!res.response || res.response.awaiting_email_confirmation) {
+                this.state = 'AwaitingConfirmEmail'
+                return
+            }
+        }
+
+        // 最终添加
+        if (this.state === 'AwaitingFinalizeAddAuthenticator' || this.state === 'AwaitingFinalizeAddAuthenticatorBadSmsCode') {
+            return this._finalizeAddAuthenticator()
+        }
+
+        // 已添加, 移动令牌
+        if (this.state === 'AuthenticatorPresent'){
+            return this._challengeAuthenticatorStart()
+        }
+
+        // 添加令牌
+        return this._addAuthenticator()
     }
 
 

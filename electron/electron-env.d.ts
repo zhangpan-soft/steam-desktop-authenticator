@@ -37,6 +37,7 @@ type ElectronMessageChannel =
     | 'settings:message:change'
     | 'context:get'
     | 'context:set'
+    | 'steam:message:login-success-from-window'
     | SteamMessageChannel
 
 type SteamMessageChannel =
@@ -50,8 +51,9 @@ type SteamMessageChannel =
     | 'steam:generateCode'
     | 'steam:account:get'
     | 'steam:confirmations:respond'
+    | 'steam:addAuthenticator'
 
-type WindowHashType = '/' | '/steam/confirmations'
+type WindowHashType = '/' | '/steam/confirmations' | '/steam/login'
 
 type WindowUri = {
     hash: WindowHashType
@@ -69,11 +71,12 @@ type TwoFactorState =
     | 'NeedPhoneNumber'
     | 'FailureRegisterDevice'
     | 'FailureAddingPhone'
-    | 'NeedSmsCode'
+    | 'NeedChallengeSmsCode'
     | 'AwaitingFinalizeAddAuthenticator'
     | 'AwaitingFinalizeAddAuthenticatorBadSmsCode'
     | 'UnableToGenerateCorrectCodes'
     | 'SessionExpired'
+    | 'BadChallengeSmsCode'
 
 // Used in Renderer process, expose in `preload.ts`
 interface Window {

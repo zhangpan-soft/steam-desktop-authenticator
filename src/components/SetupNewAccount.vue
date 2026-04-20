@@ -4,7 +4,7 @@ import {reactive, ref, computed} from "vue";
 import SteamLogin from "./SteamLogin.vue";
 import {ElLoading, ElMessage, ElMessageBox, type InputInstance} from "element-plus";
 import CustomDialog from "./CustomDialog.vue";
-import { useI18n } from 'vue-i18n'
+import {useI18n} from 'vue-i18n'
 
 const currentData = reactive<{
   steamLoginModel: boolean
@@ -14,7 +14,7 @@ const currentData = reactive<{
   phoneCountryId: string
   phoneNumber: string
   session?: SteamSession
-  steps: ''|'AwaitingConfirmEmail' | 'GeneralFailure' | 'AwaitingProvidePhoneNumber' | 'AuthenticatorPresent' | 'AwaitingFinalization' | 'AwaitingSendSmsCode'
+  steps: '' | 'AwaitingConfirmEmail' | 'GeneralFailure' | 'AwaitingProvidePhoneNumber' | 'AuthenticatorPresent' | 'AwaitingFinalization' | 'AwaitingSendSmsCode'
   deviceId: string
 }>({
   steamLoginModel: false,
@@ -271,12 +271,12 @@ const phoneCountryCodes: {
 // endregion
 
 const phoneInputRef = ref<InputInstance>()
-const { t, locale } = useI18n()
+const {t, locale} = useI18n()
 
 // 使用浏览器内置的 Intl.DisplayNames API 自动翻译国家/地区名称
 const localizedPhoneCountryCodes = computed(() => {
   try {
-    const regionNames = new Intl.DisplayNames([locale.value], { type: 'region' })
+    const regionNames = new Intl.DisplayNames([locale.value], {type: 'region'})
     return phoneCountryCodes.map(item => ({
       ...item,
       name: regionNames.of(item.id) || item.name // 如果系统接口转换失败，回退到原本硬编码的名称
@@ -303,11 +303,43 @@ const handleAuthentication = async () => {
     background: 'rgba(0, 0, 0, 0.7)',
   })
   try {
-
+    await addAuthenticator({})
   } catch (e: any) {
     ElMessage.error(e.message)
   } finally {
     loadingInstance.close()
+  }
+}
+
+const addAuthenticator = async (args: any) => {
+  const state: TwoFactorState = await window.ipcRenderer.invoke('steam:addAuthenticator', {...currentData.session, ...args})
+  if (!state) {
+    ElMessage.error('添加失败')
+    return
+  }
+  switch (state) {
+      // 登录过期
+    case "SessionExpired": {
+      // todo 打开登录弹框, 结束
+      return
+    }
+    case "FailureRegisterDevice": {
+      // todo 提示设备号注册失败, 稍后重试, 结束
+      return
+    }
+    case "NeedChallengeSmsCode":
+    case "BadChallengeSmsCode":
+    case "AwaitingRemoveChallengeContinue": {
+      // todo 打开手机验证码输入框
+      // todo 同步等待
+      // todo 用户输完验证码点击确认后, 再次递归, 要换成实际拿到的验证码
+      return addAuthenticator({smsCode: ''})
+    }
+    case "NeedPhoneNumber":{
+      // todo 打开手机号输入框, 带地区选择
+      // todo 同步等待
+      // todo 用户输入完手机号点击确认后,
+    }
   }
 }
 
@@ -357,7 +389,7 @@ const handleNewAccountLoginFailed = (err: any) => {
             style="width: 100px"
         >
           <el-option
-            v-for="item in localizedPhoneCountryCodes"
+              v-for="item in localizedPhoneCountryCodes"
               :key="item.id"
               :label="`${item.name} (${item.code})`"
               :value="item.id"

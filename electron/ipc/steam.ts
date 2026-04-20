@@ -8,7 +8,7 @@ ipcMainHandler
         const model = getSteamModel(loginOptions.account_name)
         if (args.shared_secret) {
             loginOptions.steamGuardCode = await model.generateAuthCode(args.shared_secret)
-        }else if (model.inSettings){
+        }else if (model.guard){
             loginOptions.steamGuardCode = await model.generateAuthCode()
         }
         return model.login.login(loginOptions)
@@ -80,4 +80,19 @@ ipcMainHandler
                 guard: model.guard
             } as SteamAccount
         }
+    })
+    .handle('steam:addAuthenticator', async (event, args)=>{
+        const {account_name, smsCode, phoneNumber, phoneCountryCode} = {...args}
+        const model = getSteamModel(account_name)
+        if (smsCode){
+            model.smsCode = smsCode
+        }
+        if (phoneNumber){
+            model.phone.phoneNumber = phoneNumber
+        }
+        if (phoneCountryCode){
+            model.phone.phoneCountryCode = phoneCountryCode
+        }
+        await model.addAuthenticator()
+        return model.state
     })
