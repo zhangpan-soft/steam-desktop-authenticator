@@ -1,0 +1,121 @@
+{
+  "header": {
+    "file": "File",
+    "importAccount": "Import Account",
+    "settings": "Settings",
+    "language": "Language",
+    "exit": "Exit",
+    "selectedAccount": "Selected Account",
+    "loginAgain": "Login again",
+    "forceRefresh": "Force refresh",
+    "remove": "Remove"
+  },
+  "home": {
+    "setupNewAccount": "Setup New Account",
+    "setupEncryption": "Setup Encryption",
+    "viewConfirmations": "View Confirmations",
+    "copyToken": "Copy",
+    "tokenCopied": "Token copied to clipboard",
+    "noTokenToCopy": "No token to copy",
+    "selectAccountHint": "Please select one account",
+    "noAccountSelected": "No Account selected",
+    "checkForUpdates": "Check for updates",
+    "refreshSuccess": "Refresh success",
+    "refreshFailed": "Refresh failed"
+  },
+  "dialog": {
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "save": "Save",
+    "close": "Close"
+  },
+  "import": {
+    "title": "Import Account",
+    "passkeyLabel": "Enter your encryption passkey if your .maFile is encrypted:",
+    "oldMaFileLabel": "If your maFile from old brand, You need to turn on this switch",
+    "manifestHint": "If you import an encrypted .maFile, the manifest file must be next to it.",
+    "importSuccess": "Import Success",
+    "importFailed": "Import Failed",
+    "userCanceled": "You canceled",
+    "noFileSelected": "No file paths found."
+  },
+  "initializing": {
+    "title": "Initializing",
+    "selectMaFilesFolder": "Please Select the MaFiles Folder",
+    "default": "Default",
+    "custom": "Custom",
+    "canceled": "Canceled",
+    "success": "Success"
+  },
+  "passkey": {
+    "title": "Passkey",
+    "placeholder": "Please Input SDA Passkey"
+  },
+  "settings": {
+    "title": "Settings",
+    "periodicCheck": "Periodically check for new confirmations and show a popup when they arrive",
+    "periodicInterval": "Seconds between checking for confirmations",
+    "checkAllAccounts": "Check all accounts for confirmations",
+    "autoConfirmMarket": "Auto-confirm market transactions",
+    "autoConfirmTrades": "Auto-confirm trades",
+    "proxyHint": "Please setting the httpProxy or socksProxy. If in China",
+    "proxyPlaceholder": "http[s]|socks5://username@password:ip:port",
+    "timeout": "Timeout of requests in milliseconds"
+  },
+  "steamLogin": {
+    "title": "Steam Login",
+    "accountLabel": "Account",
+    "passwordLabel": "Password",
+    "accountPlaceholder": "Please input your account name",
+    "passwordPlaceholder": "Please input your password",
+    "twoFaTitle": "2FA",
+    "twoFaPrompt": "Please Input SteamGuard Code Or Confirm In Your SteamGuard App",
+    "fiveDigitCodeError": "Please input a 5-digit code",
+    "loginFailed": "Login Failed",
+    "loginFailedRetry": "Login Failed, Please Re-Try Later.{result}",
+    "loginFailedError": "Login Failed, {result}, {errorMessage}."
+  },
+  "setupNewAccount": {
+    "loadingText": "Setting up new account...",
+    "addSuccess": "Authenticator added successfully",
+    "smsCodeTitle": "Sms Code",
+    "smsCodePrompt": "Please Input Sms Code",
+    "phoneEmpty": "Please input phone number",
+    "addFailed": "Add authenticator failed",
+    "failureRegisterDevice": "Failed to register device, please try again later.",
+    "badSmsCode": "Incorrect SMS code",
+    "unhandledState": "Unhandled state: {state}",
+    "phoneTitle": "Set Phone Number",
+    "phonePlaceholder": "Please input phone number"
+  },
+  "confirmations": {
+    "title": "Confirmations",
+    "detailsTitle": "Confirmation Details",
+    "noConfirmations": "No Confirmations",
+    "failedToGet": "Failed to get confirmations.{message}",
+    "type": "Type",
+    "time": "Time",
+    "id": "ID",
+    "confirmedSuccess": "Confirmed successfully",
+    "canceledSuccess": "Canceled successfully",
+    "failedAction": "Failed to {action}. {message}",
+    "types": {
+      "generic": "Generic",
+      "trade": "Trade",
+      "market": "Market",
+      "account": "Account",
+      "phone": "Phone",
+      "recovery": "Recovery",
+      "unknown": "Unknown"
+    }
+  },
+  "inventory": {
+    "title": "Steam Inventory",
+    "noInventory": "No Inventory",
+    "loading": "Loading...",
+    "noMore": "No more items"
+  },
+  "errors": {
+    "unknown": "Unknown Error"
+  }
+}

@@ -25,7 +25,6 @@ export default defineConfig(({ mode }) => {
                                 'steam-totp',
                                 'steam-crypto',
                                 'got',
-                                'protobufjs',
                                 'steamcommunity'
                             ],
                         },

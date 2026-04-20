@@ -1,7 +1,7 @@
 {
   "name": "steam-desktop-authenticator",
   "private": true,
-  "version": "0.1.2",
+  "version": "0.1.4",
   "description": "A desktop authenticator for Steam that's written in Electron and Vue.",
   "author": "zp99992050 <zp99992050@gmail.com>",
   "type": "module",
@@ -12,7 +12,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc && vite build && npm run build:icons && electron-builder",
-    "release": "vue-tsc && vite build && npm run build:icons && electron-builder --publish always",
+    "release": "vue-tsc && vite build && npm run build:icons && electron-builder",
     "build:icons": "electron-icon-builder --input=./public/icon.png --output=build --flatten",
     "preview": "vite preview"
   },
@@ -23,9 +23,11 @@
     "hpagent": "^1.2.0",
     "js-base64": "^3.7.8",
     "lowdb": "^7.0.1",
+    "protobufjs": "^8.0.0",
     "socks-proxy-agent": "^8.0.5",
     "steam-session": "^1.9.4",
     "steam-totp": "^2.1.2",
+    "vue-i18n": "^9.13.1",
     "vue": "^3.4.21",
     "vue-router": "^4.6.4"
   },

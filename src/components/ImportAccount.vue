@@ -3,6 +3,7 @@ import {reactive, ref} from "vue";
 import SteamLogin from "./SteamLogin.vue";
 import CustomDialog from "./CustomDialog.vue";
 import {Hide, Lock, Unlock, View} from "@element-plus/icons-vue";
+import { useI18n } from 'vue-i18n'
 import {ElMessage} from "element-plus";
 
 const currentData = reactive<{
@@ -22,23 +23,30 @@ const currentData = reactive<{
 })
 
 const show = defineModel<boolean>('show', { default: false })
+const { t } = useI18n()
 
 const steamLoginRef = ref<InstanceType<typeof SteamLogin>>()
 
 const events = {
   async handleLoginSuccess(session: SteamSession){
-    currentData.steamAccount.Session = session
-    await window.ipcRenderer.invoke('steam:account:set', currentData.steamAccount)
-    const settings:Settings = await window.ipcRenderer.invoke('settings:get')
-    const index = settings.entries.findIndex(item=> item.account_name === currentData.steamAccount.account_name)
-    if (index===-1){
-      settings.entries.push({steamid: currentData.steamAccount.Session.SteamID, account_name: currentData.steamAccount.account_name})
-    }
-    await window.ipcRenderer.invoke('settings:set', settings)
+    currentData.steamAccount = await window.ipcRenderer.invoke('steam:account:get', {...session})
+    console.log('------------', currentData.steamAccount)
+    await window.ipcRenderer.invoke('settings:get',)
+        .then((settings:Settings)=>{
+          if (settings.entries.findIndex(value => value.account_name === session.account_name && value.steamid === session.SteamID)<0){
+            settings.entries.push({
+              account_name: session.account_name,
+              steamid: session.SteamID,
+            })
+          }
+          return window.ipcRenderer.invoke('settings:set', settings)
+        })
+    ElMessage.success(t('import.importSuccess'))
+    show.value = false
   },
   handleLoginFailed(err: any){
     console.log(err)
-    ElMessage.error('Import Failed')
+    ElMessage.error(t('import.importFailed'))
     show.value = false
     currentData.loginModelShow = false
   },
@@ -48,61 +56,61 @@ const events = {
   },
   async handleConfirm() {
     currentData.loading = true;
-      try {
-        const selectFileRes = await window.ipcRenderer.invoke('showOpenDialog', {
-          properties: ['openFile'],
-          filters: [{ name: '.maFile', extensions: ['maFile', 'json', 'text'] }]
-        })
+    try {
+      const selectFileRes = await window.ipcRenderer.invoke('showOpenDialog', {
+        properties: ['openFile'],
+        filters: [{ name: '.maFile', extensions: ['maFile', 'json', 'text'] }]
+      })
 
-        // 修正逻辑：如果用户取消了对话框
-        if (selectFileRes.canceled) {
-          ElMessage.warning('You canceled')
-          return
-        }
-
-        const filePath = selectFileRes.filePaths[0]
-        if (!filePath) {
-          ElMessage.warning('No file paths found.')
-          return
-        }
-
-        let steamAccount: SteamAccount;
-
-        if (currentData.old) {
-          const importMaFileRes = await window.ipcRenderer.invoke('importMaFile', {
-            path: filePath,
-            passkey: currentData.passkey,
-          })
-          steamAccount = importMaFileRes.data as SteamAccount
-        } else {
-          // 统一使用 await 替代 .then
-          const res = await window.ipcRenderer.invoke('steam:account:get', {
-            filepath: filePath,
-            passkey: currentData.passkey,
-          })
-          steamAccount = res as SteamAccount
-        }
-        currentData.steamAccount = steamAccount
-        currentData.loginModelShow = true
-      } catch (e: any) {
-        ElMessage.error(e.message || 'Unknown Error')
-      } finally {
-        // 无论成功失败，闭包执行完毕后关闭 Loading
-        currentData.loading = false
+      // 修正逻辑：如果用户取消了对话框
+      if (selectFileRes.canceled) {
+        ElMessage.warning(t('import.userCanceled'))
+        return
       }
+
+      const filePath = selectFileRes.filePaths[0]
+      if (!filePath) {
+        ElMessage.warning(t('import.noFileSelected'))
+        return
+      }
+
+      let steamAccount: SteamAccount;
+
+      if (currentData.old) {
+        const importMaFileRes = await window.ipcRenderer.invoke('importMaFile', {
+          path: filePath,
+          passkey: currentData.passkey,
+        })
+        steamAccount = importMaFileRes.data as SteamAccount
+      } else {
+        // 统一使用 await 替代 .then
+        const res = await window.ipcRenderer.invoke('steam:account:get', {
+          filepath: filePath,
+          passkey: currentData.passkey,
+        })
+        steamAccount = res as SteamAccount
+      }
+      currentData.steamAccount = steamAccount
+      currentData.loginModelShow = true
+    } catch (e: any) {
+      ElMessage.error(e.message || t('errors.unknown'))
+    } finally {
+      // 无论成功失败，闭包执行完毕后关闭 Loading
+      currentData.loading = false
+    }
   }
 }
 </script>
 
 <template>
-  <CustomDialog :title="'Import Account'"
+  <CustomDialog :title="t('import.title')"
                 :loading="currentData.loading"
                 v-model:show="show"
                 @cancel="events.handleCancel"
                 @confirm="events.handleConfirm">
     <el-row>
       <el-text size="small">
-        Enter your encryption passkey if your .maFile is encrypted:
+        {{ t('import.passkeyLabel') }}
       </el-text>
     </el-row>
     <el-row>
@@ -125,20 +133,20 @@ const events = {
     <el-row>
       <el-switch size="small" v-model="currentData.old"/>
       <el-text size="small">
-        If your maFile from old brand, You need to turn on this switch
+        {{ t('import.oldMaFileLabel') }}
       </el-text>
     </el-row>
     <el-row>
       <el-text size="small">
-        If you import an encrypted .maFile, the manifest file must be next to it.
+        {{ t('import.manifestHint') }}
       </el-text>
     </el-row>
   </CustomDialog>
   <SteamLogin
       v-if="currentData.loginModelShow"
       ref="steamLoginRef"
-      :account_name="currentData.steamAccount.account_name"
-      :shared_secret="currentData.steamAccount.shared_secret"
+      :account_name="currentData.steamAccount.session?.account_name || currentData.steamAccount.guard?.account_name"
+      :shared_secret="currentData.steamAccount.guard?.shared_secret"
       v-model:show="currentData.loginModelShow"
       @success="events.handleLoginSuccess"
       @failed="events.handleLoginFailed"

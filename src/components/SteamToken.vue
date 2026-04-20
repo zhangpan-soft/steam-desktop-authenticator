@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import {onUnmounted, reactive} from "vue";
 import {ElMessage} from "element-plus";
+import {useI18n} from "vue-i18n";
 
 const props = withDefaults(defineProps<{
   account_name?: string
 }>(),{})
+
+const {t} = useI18n()
 
 const currentData = reactive<{
   token: string
@@ -17,9 +20,9 @@ const currentData = reactive<{
 const copyToken = () => {
   if (currentData.token) {
     navigator.clipboard.writeText(currentData.token).then(() => {
-      ElMessage.success('Token copied to clipboard')
+      ElMessage.success(t('home.tokenCopied'))
     }).catch(() => {
-      ElMessage.error('Failed to copy token')
+      ElMessage.error(t('home.noTokenToCopy'))
     })
   } else {
     ElMessage.warning('No token to copy')
@@ -47,7 +50,7 @@ onUnmounted(()=>{
       size="small"
   >
     <template #suffix>
-      <el-button type="primary" link @click="copyToken">Copy</el-button>
+      <el-button type="primary" link @click="copyToken">{{t('home.copyToken')}}</el-button>
     </template>
   </el-input>
   <el-progress :percentage="currentData.progress"

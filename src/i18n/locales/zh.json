@@ -1,0 +1,121 @@
+{
+  "header": {
+    "file": "文件",
+    "importAccount": "导入账户",
+    "settings": "设置",
+    "language": "语言",
+    "exit": "退出",
+    "selectedAccount": "选中账户",
+    "loginAgain": "重新登录",
+    "forceRefresh": "强制刷新",
+    "remove": "移除"
+  },
+  "home": {
+    "setupNewAccount": "设置新账户",
+    "setupEncryption": "设置加密",
+    "viewConfirmations": "查看确认项",
+    "copyToken": "复制",
+    "tokenCopied": "令牌已复制到剪贴板",
+    "noTokenToCopy": "没有可复制的令牌",
+    "selectAccountHint": "请选择一个账户",
+    "noAccountSelected": "没有选中账户",
+    "checkForUpdates": "检查更新",
+    "refreshSuccess": "刷新成功",
+    "refreshFailed": "刷新失败"
+  },
+  "dialog": {
+    "confirm": "确认",
+    "cancel": "取消",
+    "save": "保存",
+    "close": "关闭"
+  },
+  "import": {
+    "title": "导入账户",
+    "passkeyLabel": "如果您的 .maFile 文件已加密，请输入加密密钥：",
+    "oldMaFileLabel": "如果您的 maFile 来自旧版或其他SDA，请打开此开关",
+    "manifestHint": "如果您导入的是加密的 .maFile，清单文件(manifest.json)必须位于其旁边。",
+    "importSuccess": "导入成功",
+    "importFailed": "导入失败",
+    "userCanceled": "您已取消操作",
+    "noFileSelected": "未找到文件路径。"
+  },
+  "initializing": {
+    "title": "初始化",
+    "selectMaFilesFolder": "请选择 MaFiles 文件夹",
+    "default": "默认",
+    "custom": "自定义",
+    "canceled": "已取消",
+    "success": "成功"
+  },
+  "passkey": {
+    "title": "密钥",
+    "placeholder": "请输入SDA密钥"
+  },
+  "settings": {
+    "title": "设置",
+    "periodicCheck": "定期检查新的确认项，并在有新项目时显示弹窗",
+    "periodicInterval": "检查确认项的间隔秒数",
+    "checkAllAccounts": "检查所有账户的确认项",
+    "autoConfirmMarket": "自动确认市场交易",
+    "autoConfirmTrades": "自动确认交易",
+    "proxyHint": "如果在中国大陆，请设置 http/socks 代理",
+    "proxyPlaceholder": "http[s]|socks5://username@password:ip:port",
+    "timeout": "请求超时时间（毫秒）"
+  },
+  "steamLogin": {
+    "title": "Steam 登录",
+    "accountLabel": "账户",
+    "passwordLabel": "密码",
+    "accountPlaceholder": "请输入您的账户名称",
+    "passwordPlaceholder": "请输入您的密码",
+    "twoFaTitle": "两步验证",
+    "twoFaPrompt": "请输入 Steam令牌 验证码或在您的 Steam 应用中确认",
+    "fiveDigitCodeError": "请输入一个5位数的验证码",
+    "loginFailed": "登录失败",
+    "loginFailedRetry": "登录失败，请稍后重试。{result}",
+    "loginFailedError": "登录失败，{result}，{errorMessage}。"
+  },
+  "setupNewAccount": {
+    "loadingText": "正在设置新账户...",
+    "addSuccess": "验证器添加成功",
+    "smsCodeTitle": "短信验证码",
+    "smsCodePrompt": "请输入短信验证码",
+    "phoneEmpty": "请输入手机号",
+    "addFailed": "添加验证器失败",
+    "failureRegisterDevice": "注册设备失败，请稍后重试。",
+    "badSmsCode": "短信验证码不正确",
+    "unhandledState": "未处理的状态: {state}",
+    "phoneTitle": "设置手机号",
+    "phonePlaceholder": "请输入手机号"
+  },
+  "confirmations": {
+    "title": "确认项",
+    "detailsTitle": "确认详情",
+    "noConfirmations": "没有待确认项",
+    "failedToGet": "获取确认项失败。{message}",
+    "type": "类型",
+    "time": "时间",
+    "id": "ID",
+    "confirmedSuccess": "已成功确认",
+    "canceledSuccess": "已成功取消",
+    "failedAction": "{action}失败。{message}",
+    "types": {
+      "generic": "通用",
+      "trade": "交易",
+      "market": "市场",
+      "account": "账户",
+      "phone": "手机",
+      "recovery": "恢复",
+      "unknown": "未知"
+    }
+  },
+  "inventory": {
+    "title": "Steam 库存",
+    "noInventory": "库存为空",
+    "loading": "加载中...",
+    "noMore": "没有更多物品了"
+  },
+  "errors": {
+    "unknown": "未知错误"
+  }
+}

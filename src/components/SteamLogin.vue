@@ -3,6 +3,7 @@ import {onMounted, onUnmounted, reactive, ref} from "vue";
 import {ElMessage, ElMessageBox} from "element-plus";
 import type {FormInstance} from "element-plus";
 import {Hide, Lock, UserFilled, View, Unlock} from "@element-plus/icons-vue";
+import { useI18n } from 'vue-i18n'
 import CustomDialog from "./CustomDialog.vue";
 
 const show = defineModel<boolean>('show', { default: false })
@@ -11,6 +12,7 @@ const props = withDefaults(defineProps<{
   shared_secret?: string
 }>(), {})
 
+const { t } = useI18n()
 // 这种写法对 IDE 自动补全最友好
 const emit = defineEmits<{
   success: [sesssion: SteamSession]
@@ -24,8 +26,8 @@ const currentData = reactive({
     password: '',
     passwordLocked: true,
     rules: {
-      account_name: [{required: true, message: 'Please input your account name', trigger: 'blur'}],
-      password: [{required: true, message: 'Please input your password', trigger: 'blur'}]
+      account_name: [{required: true, message: t('steamLogin.accountPlaceholder'), trigger: 'blur'}],
+      password: [{required: true, message: t('steamLogin.passwordPlaceholder'), trigger: 'blur'}]
     }
   }
 })
@@ -58,9 +60,9 @@ const events = {
   },
   async handle2FAPrompt(){
     try {
-      const res: any = await ElMessageBox.prompt('Please Input SteamGuard Code Or Confirm In Your SteamGuard App', '2FA', {
-        confirmButtonText: 'Confirm',
-        cancelButtonText: 'Cancel',
+      const res: any = await ElMessageBox.prompt(t('steamLogin.twoFaPrompt'), t('steamLogin.twoFaTitle'), {
+        confirmButtonText: t('dialog.confirm'),
+        cancelButtonText: t('dialog.cancel'),
         showClose: false,
         showCancelButton: true,
         buttonSize: 'small',
@@ -68,7 +70,7 @@ const events = {
         closeOnPressEscape: false,
         center: true,
         inputPattern: /^[a-zA-Z0-9]{5}$/,
-        inputErrorMessage: 'Please input a 5-digit code'
+        inputErrorMessage: t('steamLogin.fiveDigitCodeError')
       })
 
       await window.ipcRenderer.invoke('steam:submitSteamGuard', {
@@ -79,10 +81,10 @@ const events = {
       show.value = false
       currentData.loading = false
       await window.ipcRenderer.invoke('steam:cancelLogin', {account_name: currentData.loginForm.account_name})
-      emit('failed', new Error('Login Failed'))
+      emit('failed', new Error(t('steamLogin.loginFailed')))
     }
   },
-  async onLoginStatusChanged(_event: any, args: SteamLoginEvent){
+  async onLoginStatusChanged(event: any,args: SteamLoginEvent){
     if (currentData.loginForm.account_name !== args.account_name) return
 
     switch (args.status) {
@@ -94,28 +96,28 @@ const events = {
 
       case 'Need2FA':
         const steamAccount:SteamAccount = await window.ipcRenderer.invoke('steam:account:get')
-          if (!steamAccount.shared_secret){
-            if (props.shared_secret) {
-              ElMessage.error(`Login Failed`)
-              currentData.loading = false
-              return
-            }
-            await this.handle2FAPrompt()
-          } else {
-            await window.ipcRenderer.invoke('steam:token', {account_name: steamAccount.account_name})
-                .then((res)=>{
-                  return window.ipcRenderer.invoke('steam:submitSteamGuard',{account_name: steamAccount.account_name, steamGuardCode: res.token})
-                })
+        if (!steamAccount.guard?.shared_secret){
+          if (props.shared_secret) {
+            ElMessage.error(t('steamLogin.loginFailed'))
+            currentData.loading = false
+            return
           }
+          await this.handle2FAPrompt()
+        } else {
+          await window.ipcRenderer.invoke('steam:token', {account_name: steamAccount.session?.account_name})
+              .then((res)=>{
+                return window.ipcRenderer.invoke('steam:submitSteamGuard',{account_name: steamAccount.session?.account_name, steamGuardCode: res.token})
+              })
+        }
         break
 
       default:
         if (args.result) {
-          ElMessage.error(`Login Failed, Please Re-Try Later.{${args.result}}`)
+          ElMessage.error(t('steamLogin.loginFailedRetry', { result: args.result }))
         } else if (args.error_message) {
-          ElMessage.error(`Login Failed, {${args.result}}, {${args.error_message}}.`)
+          ElMessage.error(t('steamLogin.loginFailedError', { result: args.result, errorMessage: args.error_message }))
         } else {
-          ElMessage.error(`Login Failed, Please Re-Try Later.`)
+          ElMessage.error(t('steamLogin.loginFailed'))
         }
         await window.ipcRenderer.invoke('steam:cancelLogin', {account_name: currentData.loginForm.account_name}).then(() => {
           currentData.loading = false
@@ -139,7 +141,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <CustomDialog :title="'Steam Login'"
+  <CustomDialog :title="t('steamLogin.title')"
                 :loading="currentData.loading"
                 v-model:show="show"
                 @cancel="events.handleCancel"
@@ -153,7 +155,7 @@ onUnmounted(() => {
         :rules="currentData.loginForm.rules"
         size="small"
     >
-      <el-form-item prop="account_name" label="Account">
+      <el-form-item prop="account_name" :label="t('steamLogin.accountLabel')">
         <el-input v-model="currentData.loginForm.account_name" :readonly="!!props.account_name">
           <template #prefix>
             <el-icon>
@@ -163,7 +165,7 @@ onUnmounted(() => {
         </el-input>
       </el-form-item>
 
-      <el-form-item prop="password" label="Password">
+      <el-form-item prop="password" :label="t('steamLogin.passwordLabel')">
         <el-input
             v-model="currentData.loginForm.password"
             :type="currentData.loginForm.passwordLocked ? 'password' : 'text'"

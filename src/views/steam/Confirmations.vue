@@ -2,6 +2,7 @@
 import {onMounted, reactive, watch} from "vue";
 import EResult from "../../utils/EResult.ts";
 import {ElMessage} from "element-plus";
+import { useI18n } from 'vue-i18n'
 import {useRoute} from "vue-router";
 import CustomContainer from "../../components/CustomContainer.vue";
 import {Check, Close, Picture, View} from "@element-plus/icons-vue";
@@ -24,6 +25,7 @@ const data = reactive<{
 })
 
 const route = useRoute()
+const { t } = useI18n()
 
 const fetchConfirmations = async () => {
   data.loading = true
@@ -36,10 +38,10 @@ const fetchConfirmations = async () => {
         selected: false
       }))
     } else {
-      ElMessage.error(`Failed to get confirmations.${res.message || ''}`)
+      ElMessage.error(t('confirmations.failedToGet', { message: res.message || '' }))
     }
   }catch (err: any) {
-    ElMessage.error(`Failed to get confirmations.${err.message || err || ''}`)
+    ElMessage.error(t('confirmations.failedToGet', { message: err.message || err || '' }))
   } finally {
     data.loading = false
   }
@@ -55,13 +57,13 @@ watch(() => route.query.account_name, (newVal) => {
 
 const getTypeLabel = (type: number) => {
   switch (type) {
-    case 1: return 'Generic'
-    case 2: return 'Trade'
-    case 3: return 'Market'
-    case 4: return 'Account'
-    case 5: return 'Phone'
-    case 6: return 'Recovery'
-    default: return 'Unknown'
+    case 1: return t('confirmations.types.generic')
+    case 2: return t('confirmations.types.trade')
+    case 3: return t('confirmations.types.market')
+    case 4: return t('confirmations.types.account')
+    case 5: return t('confirmations.types.phone')
+    case 6: return t('confirmations.types.recovery')
+    default: return t('confirmations.types.unknown')
   }
 }
 
@@ -92,11 +94,11 @@ const handleRespond = async (item: ConfirmationItem, action: 'accept' | 'cancel'
     })
 
     if (res.eresult === EResult.OK) {
-      ElMessage.success(`${action === 'accept' ? 'Confirmed' : 'Canceled'} successfully`)
+      ElMessage.success(action === 'accept' ? t('confirmations.confirmedSuccess') : t('confirmations.canceledSuccess'))
       // 移除已处理的项
       data.list = data.list.filter(i => i.id !== item.id)
     } else {
-      ElMessage.error(`Failed to ${action}. ${res.message || ''}`)
+      ElMessage.error(t('confirmations.failedAction', { action, message: res.message || '' }))
     }
   } catch (e: any) {
     ElMessage.error(e.message || 'Unknown error')
@@ -108,10 +110,10 @@ const handleRespond = async (item: ConfirmationItem, action: 'accept' | 'cancel'
 </script>
 
 <template>
-  <CustomContainer :title="'Confirmations'" :loading="data.loading" :show-cancel-button="false" :show-confirm-button="false">
+  <CustomContainer :title="t('confirmations.title')" :loading="data.loading" :show-cancel-button="false" :show-confirm-button="false">
     <div class="list-section">
       <el-card v-if="data.list.length===0" class="empty-card">
-        <el-empty description="No Confirmations"/>
+        <el-empty :description="t('confirmations.noConfirmations')"/>
       </el-card>
       <div v-else class="list-container">
         <div
@@ -155,9 +157,9 @@ const handleRespond = async (item: ConfirmationItem, action: 'accept' | 'cancel'
   <!-- 详情弹窗 -->
   <CustomDialog
       v-model:show="data.viewModel"
-      :title="'Confirmation Details'"
+      :title="t('confirmations.detailsTitle')"
       :show-cancel-button="false"
-      confirm-button-text="Close"
+      :confirm-button-text="t('dialog.close')"
       @confirm="data.viewModel = false"
   >
     <div v-if="data.viewItem" class="detail-content">
@@ -173,9 +175,9 @@ const handleRespond = async (item: ConfirmationItem, action: 'accept' | 'cancel'
       </div>
       <el-divider style="margin: 12px 0" />
       <div class="detail-meta">
-        <p><strong>Type:</strong> {{ getTypeLabel(data.viewItem.type) }}</p>
-        <p><strong>Time:</strong> {{ data.viewItem.creation_time }}</p>
-        <p><strong>ID:</strong> {{ data.viewItem.id }}</p>
+        <p><strong>{{ t('confirmations.type') }}:</strong> {{ getTypeLabel(data.viewItem.type) }}</p>
+        <p><strong>{{ t('confirmations.time') }}:</strong> {{ data.viewItem.creation_time }}</p>
+        <p><strong>{{ t('confirmations.id') }}:</strong> {{ data.viewItem.id }}</p>
       </div>
     </div>
   </CustomDialog>

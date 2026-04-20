@@ -1,6 +1,6 @@
-export type ApiInterface = 'TwoFactor' | 'Econ' | 'MobileDevice'
+export type ApiInterface = 'TwoFactor' | 'Econ' | 'MobileDevice' | 'Phone'
 
-export type ApiMethod = TwoFactorMethod | EconMethod | MobileDeviceMethod
+export type ApiMethod = TwoFactorMethod | EconMethod | MobileDeviceMethod | PhoneMethod
 
 type TwoFactorMethod =
     'AddAuthenticator'
@@ -29,6 +29,13 @@ type EconMethod =
     | 'GetTradeOffers'
     | 'GetTradeOffersSummary'
     | 'GetTradeStatus'
+
+type PhoneMethod =
+    'SendPhoneVerificationCode'
+    | 'SetAccountPhoneNumber'
+    | 'VerifyAccountPhoneWithCode'
+    | 'IsAccountWaitingForEmailConfirmation'
+    | 'ConfirmAddPhoneToAccount'
 
 type MobileDeviceMethod = 'RegisterMobileDevice' | 'DeregisterMobileDevice'
 

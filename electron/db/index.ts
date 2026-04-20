@@ -18,7 +18,8 @@ function getDefaultSettings(): Settings {
         maFilesDir: path.join(app.getPath('userData'), 'maFiles'), // ✅ 安全：只在调用时执行
         entries: [],
         proxy: undefined,
-        timeout: 10_000
+        timeout: 10_000,
+        language: 'en'
     };
 }
 
@@ -39,6 +40,7 @@ class SettingsDb {
 
     update() {
         this.db.data = {...this.db.data, ...this.data}
+        console.log('settings#update',this.db.data)
         this.db.write()
         this.data = this.db.data
     }
@@ -96,6 +98,38 @@ class SteamAccountAdapter implements SyncAdapter<SteamAccount> {
         this.delegate = new TextFileSync(filepath)
     }
 
+    private parseJson(content: string){
+
+        console.log(`content:${content}`)
+        const temp = JSON.parse(content);
+        if (temp.shared_secret){
+            console.log(`temp1:${JSON.stringify(temp)}`)
+            return {
+                guard: {
+                    shared_secret: temp.shared_secret,
+                    serial_number: temp.serial_number,
+                    revocation_code: temp.revocation_code,
+                    uri: temp.uri,
+                    server_time: temp.server_time,
+                    account_name: temp.account_name,
+                    token_gid: temp.token_gid,
+                    identity_secret: temp.identity_secret,
+                    secret_1: temp.secret_1,
+                    status: temp.status,
+                    device_id: temp.device_id,
+                    fully_enrolled: temp.fully_enrolled,
+                },
+                session: temp.Session || temp.session
+            }
+        } else {
+            console.log(`temp2:${JSON.stringify(temp)}`)
+            return {
+                session: temp.Session || temp.session,
+                guard: temp.guard
+            }
+        }
+    }
+
     read() {
         const fileContent = this.delegate.read()
         if (!fileContent){
@@ -105,14 +139,14 @@ class SteamAccountAdapter implements SyncAdapter<SteamAccount> {
         // 如果没有设置密码，尝试直接按 JSON 解析
         // 场景：用户从未加密状态切换过来，或者文件本身未加密
         if (!this.passkey) {
-            return JSON.parse(fileContent);
+            return this.parseJson(fileContent)
         }
 
         // 简单校验格式，避免对非加密文件强行解密报错
         const splits = fileContent.split('/')
         if (splits.length !== 4) {
             // 可能是普通 JSON 文件，尝试直接解析，如果失败则抛出解密错
-            return JSON.parse(fileContent);
+            return this.parseJson(fileContent)
         }
 
         const iv = Buffer.from(splits[0], 'hex');
@@ -121,7 +155,9 @@ class SteamAccountAdapter implements SyncAdapter<SteamAccount> {
         const encryptedText = splits[3];
 
         // 关键：使用文件中的 Salt 重新派生 Key
-        const key = crypto.scryptSync(this.passkey, salt, this.KEY_LEN);
+        const key = crypto.scryptSync(crypto.createHash('md5').update(this.passkey).digest('hex'),
+            salt,
+            this.KEY_LEN);
 
         const decipher = crypto.createDecipheriv(this.ALGORITHM, key, iv);
         decipher.setAuthTag(tag)
@@ -130,7 +166,7 @@ class SteamAccountAdapter implements SyncAdapter<SteamAccount> {
         let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
         decrypted += decipher.final('utf8');
 
-        return JSON.parse(decrypted)
+        return this.parseJson(decrypted)
     }
 
     write(data: SteamAccount) {
@@ -141,8 +177,10 @@ class SteamAccountAdapter implements SyncAdapter<SteamAccount> {
 
         const iv = crypto.randomBytes(this.IV_LEN)
         const salt = crypto.randomBytes(this.SALT_LEN)
-        // 关键：每次写入生成新的 Salt -> 新的 Key
-        const key = crypto.scryptSync(this.passkey, salt, this.KEY_LEN);
+        // 关键：使用文件中的 Salt 重新派生 Key
+        const key = crypto.scryptSync(crypto.createHash('md5').update(this.passkey).digest('hex'),
+            salt,
+            this.KEY_LEN);
 
         const cipher = crypto.createCipheriv(this.ALGORITHM, key, iv);
 
@@ -157,30 +195,8 @@ class SteamAccountAdapter implements SyncAdapter<SteamAccount> {
     }
 }
 
-class SteamAccountDbs {
-    private dbs: Map<string, SteamAccountDb>
-
-    constructor() {
-        this.dbs = new Map<string, SteamAccountDb>()
-    }
-
-    db(account_name: string, passkey?: string): SteamAccountDb {
-        if (this.dbs.has(account_name)) {
-            const db: SteamAccountDb = this.dbs.get(account_name) as SteamAccountDb;
-            db.setPasskey(passkey)
-            return db as SteamAccountDb
-        }
-        const db = new SteamAccountDb(path.join(settingsDb.data.maFilesDir, `${account_name}.maFile`), passkey)
-        this.dbs.set(account_name, db)
-        return db as SteamAccountDb
-    }
-}
-
-const steamAccountDbs = new SteamAccountDbs()
-
 export {
     settingsDb,
-    steamAccountDbs,
     SteamAccountDb,
     SettingsDb
 }

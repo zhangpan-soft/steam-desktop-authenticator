@@ -4,19 +4,22 @@ import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import './style.css'
 import router from "./router";
+import { setupI18n } from './i18n'
 
 async function bootstrap(){
-    await createApp(App)
+    const settings = await window.ipcRenderer.invoke('settings:get');
+    const i18n = setupI18n(settings.language);
+
+    const app = createApp(App)
         .use(ElementPlus)
         .use(router)
-        .mount('#app').$nextTick(() => {
-            // Use contextBridge
-            window.ipcRenderer.on('main-process-message', (_event, message) => {
-                console.log(message)
-            })
+        .use(i18n)
+
+    app.mount('#app').$nextTick(() => {
+        window.ipcRenderer.on('main-process-message', (_event, message) => {
+            console.log(message)
         })
+    })
 }
 
 bootstrap().then()
-
-
