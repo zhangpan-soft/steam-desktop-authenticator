@@ -1,7 +1,14 @@
-import {app, BrowserWindow, BrowserWindowConstructorOptions} from 'electron'
+import {app, BrowserWindow, BrowserWindowConstructorOptions, Notification} from 'electron'
 import {createRequire} from 'node:module'
 import {fileURLToPath} from 'node:url'
 import path from 'node:path'
+import {settingsDb} from "./db";
+import {getSteamModel} from "./steam/models";
+import {DEFAULT_LANGUAGE} from "./steam/constants.ts";
+import {EResult} from "steam-session";
+import enLocale from '../src/i18n/locales/en.json'
+import zhLocale from '../src/i18n/locales/zh.json'
+import {openSteamNotificationsWindow} from "./utils/steam-browser.ts";
 
 createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -23,6 +30,27 @@ export const MAIN_DIST = path.join(process.env.APP_ROOT, 'dist-electron')
 export const RENDERER_DIST = path.join(process.env.APP_ROOT, 'dist')
 
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 'public') : RENDERER_DIST
+
+// 主进程简易 i18n 翻译函数
+function t(keyPath: string, args?: Record<string, any>): string {
+    const lang = settingsDb.data.language || 'en'
+    const localeData: any = lang === 'zh' ? zhLocale : enLocale
+
+    const keys = keyPath.split('.')
+    let result: any = localeData
+    for (const k of keys) {
+        if (result === undefined) break
+        result = result[k]
+    }
+
+    let str = typeof result === 'string' ? result : keyPath
+    if (args) {
+        for (const [k, v] of Object.entries(args)) {
+            str = str.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v))
+        }
+    }
+    return str
+}
 
 class WindowManager {
     private _main: BrowserWindow | null = null
@@ -89,8 +117,6 @@ class WindowManager {
             win = this._child.get(uri.hash)
         }
 
-        console.log('222222222', finalHash, win)
-
         if (!win) {
             throw new Error('Window not found')
         }
@@ -107,13 +133,15 @@ class WindowManager {
 
     public addChild(uri: WindowUri, options: BrowserWindowConstructorOptions) {
 
-        console.log('addWindow', uri, options)
-
         if (!this._main) {
             throw new Error('Main window not initialized');
         }
         if (uri.hash === '/') {
             throw new Error('Child windows uri not empty or /');
+        }
+
+        if (!options.parent){
+            options.parent = this._main
         }
 
 
@@ -204,6 +232,127 @@ app.on('activate', () => {
 
 app.whenReady().then(() => {
     windowManager.init() // 在 ready 后初始化
+
+    // 使用递归 setTimeout 替代 setInterval，防止网络阻塞导致的请求堆积，并支持动态间隔
+    const periodicCheck = async () => {
+        try {
+            if (settingsDb.data.entries && settingsDb.data.entries.length > 0) {
+                const isCheckingEnabled = settingsDb.data.periodic_checking ||
+                                          settingsDb.data.periodic_checking_checkall ||
+                                          settingsDb.data.auto_confirm_trades ||
+                                          settingsDb.data.auto_confirm_market_transactions;
+
+                if (isCheckingEnabled) {
+                    for (let entry of settingsDb.data.entries) {
+                        await checkAccountConfirmations(entry)
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Periodic check error:', e)
+        }
+
+        // 获取最新间隔时间，最少 5 秒，开始下一轮递归
+        const interval = Math.max(Number(settingsDb.data.periodic_checking_interval) || 5, 5) * 1000;
+        setTimeout(periodicCheck, interval)
+    }
+
+    // 启动轮询
+    setTimeout(periodicCheck, 5000)
 })
+
+async function checkAccountConfirmations(entry: EntryType) {
+    const model = getSteamModel(entry.account_name)
+    const res = await model.notification.getNotifications({
+        include_hidden: false,
+        language: DEFAULT_LANGUAGE,
+        include_confirmation_count: true,
+        include_pinned_counts: true,
+        include_read: false,
+        count_only: true
+    })
+    if (res.eresult !== EResult.OK) return;
+
+    if (res.response?.confirmation_count && res.response.confirmation_count > 0) {
+        const confs = await model.getConfirmations()
+        if (confs.eresult === EResult.OK && confs.response?.success && confs.response.conf.length > 0) {
+            const trades = confs.response.conf.filter(value => value.type === 2) // ConfirmationType.TRADE = 2
+            const markets = confs.response.conf.filter(value => value.type === 3) // ConfirmationType.MARKET = 3
+
+            // 提取出的公共处理函数
+            const processList = async (list: any[], autoConfirm: boolean, typeLabel: string, idLabel: string, idField: string) => {
+                for (const item of list) {
+                    try {
+                        const dateStr = new Date(Number(item.creation_time) * 1000).toLocaleDateString()
+                        const displayId = item[idField]
+
+                        if (autoConfirm && !item.warn) {
+                            await model.acceptConfirmation(item)
+                            const n = new Notification({
+                                title: t('notifications.autoConfirmTitle', { account: entry.account_name, type: typeLabel }),
+                                body: t('notifications.bodyAuto', { idLabel, id: displayId, time: dateStr, summary: item.summary })
+                            })
+                            n.show()
+                        } else {
+                            const title = item.warn
+                                ? t('notifications.warnConfirmTitle', { account: entry.account_name, type: typeLabel })
+                                : t('notifications.confirmTitle', { account: entry.account_name, type: typeLabel })
+                            const body = item.warn
+                                ? t('notifications.bodyWarn', { warn: item.warn, idLabel, id: displayId, summary: item.summary })
+                                : t('notifications.bodyNormal', { idLabel, id: displayId, time: dateStr, summary: item.summary })
+
+                            const n = new Notification({ title, body })
+                            n.on('click', () => {
+                                windowManager.addChild({
+                                    hash: '/steam/confirmations',
+                                    query: { account_name: entry.account_name }
+                                }, {
+                                    width: 600,
+                                    height: 800,
+                                    useContentSize: true,
+                                    resizable: false,
+                                    maximizable: false,
+                                    minimizable: true,
+                                    show: false
+                                })
+                                n.close()
+                            })
+                            n.show()
+                        }
+                    } catch (e) {
+                        console.error(`Failed to handle ${typeLabel} transaction:`, e)
+                    }
+                }
+            }
+
+            // 1. 处理交易 (Trade)
+            await processList(trades, settingsDb.data.auto_confirm_trades, t('notifications.tradeType'), t('notifications.tradeId'), 'creator_id')
+
+            // 2. 处理市场 (Market)
+            await processList(markets, settingsDb.data.auto_confirm_market_transactions, t('notifications.marketType'), t('notifications.marketId'), 'id')
+        }
+    }
+
+    if ((res.response?.pending_gift_count && res.response.pending_gift_count>0)
+        || (res.response?.pending_friend_count && res.response.pending_friend_count>0)
+        || (res.response?.pending_family_invite_count && res.response.pending_family_invite_count>0)
+    ){
+        const msgs = []
+        if (res.response.pending_gift_count && res.response.pending_gift_count > 0) msgs.push(t('notifications.pendingGifts', { count: res.response.pending_gift_count }))
+        if (res.response.pending_friend_count && res.response.pending_friend_count > 0) msgs.push(t('notifications.pendingFriends', { count: res.response.pending_friend_count }))
+        if (res.response.pending_family_invite_count && res.response.pending_family_invite_count > 0) msgs.push(t('notifications.pendingFamilies', { count: res.response.pending_family_invite_count }))
+
+        const n = new Notification({
+            title: t('notifications.steamAccountNotice'),
+            body: t('notifications.pendingBody', { account: entry.account_name, msgs: msgs.join(t('notifications.separator')) })
+        })
+
+        n.on('click', async () => {
+            await openSteamNotificationsWindow(entry.account_name, model.session)
+        })
+
+        n.show()
+    }
+}
 
 export default windowManager

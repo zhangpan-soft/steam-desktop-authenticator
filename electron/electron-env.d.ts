@@ -52,8 +52,9 @@ type SteamMessageChannel =
     | 'steam:account:get'
     | 'steam:confirmations:respond'
     | 'steam:addAuthenticator'
+    | 'steam:open-notifications'
 
-type WindowHashType = '/' | '/steam/confirmations' | '/steam/login'
+type WindowHashType = '/' | '/steam/confirmations' | '/steam/login' | '/steam/confirmation'
 
 type WindowUri = {
     hash: WindowHashType
@@ -366,4 +367,34 @@ interface SetAccountPhoneNumberResponse {
 interface IsAccountWaitingForEmailConfirmationResponse {
     awaiting_email_confirmation: boolean
     seconds_to_wait: number
+}
+
+interface GetNotificationsParams{
+    include_hidden?: boolean
+    language?: string
+    include_confirmation_count?: boolean
+    include_pinned_counts?: boolean
+    include_read?: boolean
+    count_only?: boolean
+}
+
+interface NotificationResponse{
+    notification_id: string
+    notification_targets: number,
+    notification_type: number
+    body_data: any
+    read: boolean
+    timestamp: number
+    hidden: boolean
+    expiry: number
+    viewed: number
+}
+
+interface GetNotificationsResponse {
+    notifications: NotificationResponse[]
+    confirmation_count: number
+    pending_gift_count: number
+    pending_friend_count: number
+    unread_count: number
+    pending_family_invite_count: number
 }

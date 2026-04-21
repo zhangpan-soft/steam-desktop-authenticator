@@ -1,6 +1,6 @@
-export type ApiInterface = 'TwoFactor' | 'Econ' | 'MobileDevice' | 'Phone'
+export type ApiInterface = 'TwoFactor' | 'Econ' | 'MobileDevice' | 'Phone' | 'SteamNotification'
 
-export type ApiMethod = TwoFactorMethod | EconMethod | MobileDeviceMethod | PhoneMethod
+export type ApiMethod = TwoFactorMethod | EconMethod | MobileDeviceMethod | PhoneMethod | SteamNotification
 
 type TwoFactorMethod =
     'AddAuthenticator'
@@ -36,6 +36,8 @@ type PhoneMethod =
     | 'VerifyAccountPhoneWithCode'
     | 'IsAccountWaitingForEmailConfirmation'
     | 'ConfirmAddPhoneToAccount'
+
+type SteamNotification = 'GetSteamNotifications'
 
 type MobileDeviceMethod = 'RegisterMobileDevice' | 'DeregisterMobileDevice'
 

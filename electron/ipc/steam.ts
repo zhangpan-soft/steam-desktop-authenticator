@@ -1,6 +1,7 @@
 import ipcMainHandler from "./index.ts";
 import {SteamAccountDb} from "../db";
 import {SteamTimeSync, getSteamModel} from '../steam/models'
+import {openSteamNotificationsWindow} from "../utils/steam-browser.ts";
 
 ipcMainHandler
     .handle('steam:login', async (event, args) => {
@@ -95,4 +96,10 @@ ipcMainHandler
         }
         await model.addAuthenticator()
         return model.state
+    })
+    .handle('steam:open-notifications', async (event, args) => {
+        const { account_name } = args
+        const model = getSteamModel(account_name)
+        if (!model.session) return
+        await openSteamNotificationsWindow(account_name, model.session)
     })

@@ -433,7 +433,7 @@ const handleNewAccountLoginFailed = (err: any) => {
         <el-select
             size="small"
             v-model="currentData.phoneCountryId"
-            placeholder="Country Code"
+            :placeholder="t('setupNewAccount.countryCode')"
             filterable
             style="width: 100px"
         >

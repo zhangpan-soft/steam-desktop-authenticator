@@ -3,14 +3,19 @@ import {ConstructorOptions} from "steam-session/dist/interfaces-external";
 import {settingsDb, SteamAccountDb} from "../../db";
 import {
     ACCESS_TOKEN_NAME,
-    APP_VERSION_NAME, DATA_ACTIVATION_CODE_NAME, DATA_AUTHENTICATOR_CODE_NAME, DATA_AUTHENTICATOR_TIME_NAME,
-    DATA_AUTHENTICATOR_TYPE_NAME, DATA_DEVICE_IDENTIFIER_NAME,
+    APP_VERSION_NAME,
+    DATA_ACTIVATION_CODE_NAME,
+    DATA_AUTHENTICATOR_CODE_NAME,
+    DATA_AUTHENTICATOR_TIME_NAME,
+    DATA_AUTHENTICATOR_TYPE_NAME,
+    DATA_DEVICE_IDENTIFIER_NAME,
     DATA_GENERATE_NEW_TOKEN_NAME,
     DATA_SMS_CODE_NAME,
     DATA_SMS_PHONE_ID_NAME,
     DEFAULT_APP_VERSION,
     DEFAULT_CLIENT_PLATFORM,
-    DEFAULT_DATA_AUTHENTICATOR_TYPE_VALUE, DEFAULT_DATA_SMS_PHONE_ID_VALUE,
+    DEFAULT_DATA_AUTHENTICATOR_TYPE_VALUE,
+    DEFAULT_DATA_SMS_PHONE_ID_VALUE,
     DEFAULT_LANGUAGE,
     DEFAULT_TIME_ZONE_OFFSET,
     DEFAULT_USER_AGENT,
@@ -28,9 +33,9 @@ import getEndpoints, {COMMUNITY_ENDPOINTS, STEAM_COMMUNITY_BASE} from "../endpoi
 import * as SteamTotp from "steam-totp";
 import path from "node:path";
 import {util} from "protobufjs";
-import EventEmitter = util.EventEmitter;
 import runtimeContext from "../../utils/runtime-context.ts";
 import windowManager from "../../window-manager.ts";
+import EventEmitter = util.EventEmitter;
 
 class SteamLoginModel extends EventEmitter {
     private _session?: LoginSession
@@ -434,6 +439,44 @@ class SteamPhoneModel {
     }
 }
 
+class SteamNotificationModel {
+    session?: SteamSession
+
+    constructor(session?: SteamSession) {
+        this.session = session
+    }
+
+    async getNotifications(params: GetNotificationsParams): Promise<SteamResponse<GetNotificationsResponse>> {
+        if (!this.session) {
+            return {
+                eresult: EResult.AccessDenied,
+                response: {
+                    notifications: [],
+                    confirmation_count: 0,
+                    pending_gift_count: 0,
+                    pending_family_invite_count: 0,
+                    unread_count: 0,
+                    pending_friend_count: 0
+                },
+                status: 0
+            }
+        }
+
+        if (!params.language) {
+            params.language = DEFAULT_LANGUAGE
+        }
+
+        return GotHttpApiRequest.get(getEndpoints('SteamNotification', 'GetSteamNotifications', 1))
+            .params(params)
+            .requestConfig({timeout: settingsDb.data.timeout, proxies: settingsDb.data.proxy})
+            .userAgent(DEFAULT_USER_AGENT)
+            .perform()
+            .then(res => parseSteamResult<GetNotificationsResponse>(res))
+            .catch(reason => parseErrorResult<GetNotificationsResponse>(reason))
+
+    }
+}
+
 class SteamAccountModel implements SteamAccount {
     session?: SteamSession
     guard?: SteamGuard
@@ -445,6 +488,8 @@ class SteamAccountModel implements SteamAccount {
     mobileDevice: SteamMobileDeviceModel
 
     phone: SteamPhoneModel
+
+    notification: SteamNotificationModel
 
     private db: SteamAccountDb
 
@@ -459,6 +504,7 @@ class SteamAccountModel implements SteamAccount {
         this.login = new SteamLoginModel(account_name)
         this.mobileDevice = new SteamMobileDeviceModel(this.session)
         this.phone = new SteamPhoneModel(this.session)
+        this.notification = new SteamNotificationModel(this.session)
 
         this.login.on('login-status', (event: SteamLoginEvent) => {
 
@@ -594,7 +640,7 @@ class SteamAccountModel implements SteamAccount {
             .catch(reason => parseErrorResult<ConfirmationsResponse>(reason))
     }
 
-    private async _challengeAuthenticatorStart(): Promise<void>{
+    private async _challengeAuthenticatorStart(): Promise<void> {
         if (!this.session || !await this.checkSession()) {
             this.state = 'SessionExpired'
             return
@@ -617,7 +663,7 @@ class SteamAccountModel implements SteamAccount {
         return
     }
 
-    private async _challengeAuthenticatorContinue(): Promise<void>{
+    private async _challengeAuthenticatorContinue(): Promise<void> {
         if (!this.session || !await this.checkSession()) {
             this.state = 'SessionExpired'
             return
@@ -644,12 +690,12 @@ class SteamAccountModel implements SteamAccount {
             return
         }
 
-        if (removeAuthenticatorViaChallengeContinueRes.eresult === EResult.SMSCodeFailed || removeAuthenticatorViaChallengeContinueRes.eresult === EResult.TwoFactorActivationCodeMismatch){
+        if (removeAuthenticatorViaChallengeContinueRes.eresult === EResult.SMSCodeFailed || removeAuthenticatorViaChallengeContinueRes.eresult === EResult.TwoFactorActivationCodeMismatch) {
             this.state = 'BadChallengeSmsCode'
             return
         }
 
-        if (removeAuthenticatorViaChallengeContinueRes.eresult !== EResult.OK){
+        if (removeAuthenticatorViaChallengeContinueRes.eresult !== EResult.OK) {
             this.state = 'GeneralFailure'
             return
         }
@@ -673,7 +719,7 @@ class SteamAccountModel implements SteamAccount {
         return
     }
 
-    private async _addPhoneNumber(): Promise<void>{
+    private async _addPhoneNumber(): Promise<void> {
         if (!this.phone.phoneNumber || !this.phone.phoneCountryCode) {
             this.state = 'NeedPhoneNumber'
             return
@@ -688,7 +734,7 @@ class SteamAccountModel implements SteamAccount {
         }
     }
 
-    private async _finalizeAddAuthenticator(){
+    private async _finalizeAddAuthenticator() {
         if (!this.session || !await this.checkSession()) {
             this.state = 'SessionExpired'
             return
@@ -743,7 +789,7 @@ class SteamAccountModel implements SteamAccount {
         return
     }
 
-    private async _addAuthenticator(){
+    private async _addAuthenticator() {
         if (!this.session || !await this.checkSession()) {
             this.state = 'SessionExpired'
             return
@@ -839,7 +885,7 @@ class SteamAccountModel implements SteamAccount {
         }
 
         // 已添加, 移动令牌
-        if (this.state === 'AuthenticatorPresent'){
+        if (this.state === 'AuthenticatorPresent') {
             return this._challengeAuthenticatorStart()
         }
 

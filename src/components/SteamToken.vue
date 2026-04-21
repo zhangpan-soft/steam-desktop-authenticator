@@ -18,14 +18,14 @@ const currentData = reactive<{
 })
 
 const copyToken = () => {
-  if (currentData.token) {
+  if (currentData.token && currentData.token !== 'N/A') {
     navigator.clipboard.writeText(currentData.token).then(() => {
       ElMessage.success(t('home.tokenCopied'))
     }).catch(() => {
-      ElMessage.error(t('home.noTokenToCopy'))
+      ElMessage.error(t('errors.unknown'))
     })
   } else {
-    ElMessage.warning('No token to copy')
+    ElMessage.warning(t('home.noTokenToCopy'))
   }
 }
 const tokenInterval = setInterval(async () => {

@@ -8,7 +8,8 @@
     "selectedAccount": "选中账户",
     "loginAgain": "重新登录",
     "forceRefresh": "强制刷新",
-    "remove": "移除"
+    "remove": "移除",
+    "notifications": "通知"
   },
   "home": {
     "setupNewAccount": "设置新账户",
@@ -86,7 +87,8 @@
     "badSmsCode": "短信验证码不正确",
     "unhandledState": "未处理的状态: {state}",
     "phoneTitle": "设置手机号",
-    "phonePlaceholder": "请输入手机号"
+    "phonePlaceholder": "请输入手机号",
+    "countryCode": "国家代码"
   },
   "confirmations": {
     "title": "确认项",
@@ -99,6 +101,8 @@
     "confirmedSuccess": "已成功确认",
     "canceledSuccess": "已成功取消",
     "failedAction": "{action}失败。{message}",
+    "accept": "接受",
+    "cancel": "拒绝",
     "types": {
       "generic": "通用",
       "trade": "交易",
@@ -117,5 +121,23 @@
   },
   "errors": {
     "unknown": "未知错误"
+  },
+  "notifications": {
+    "tradeType": "交易",
+    "marketType": "市场",
+    "tradeId": "报价id",
+    "marketId": "编号",
+    "autoConfirmTitle": "[{account}] {type}自动确认通知",
+    "confirmTitle": "[{account}] {type}确认通知",
+    "warnConfirmTitle": "[{account}] 危险{type}确认通知",
+    "bodyAuto": "{idLabel}:{id}, 时间:{time}, 摘要:{summary}",
+    "bodyWarn": "警告:{warn}, {idLabel}:{id}, 摘要:{summary}",
+    "bodyNormal": "{idLabel}:{id}, 时间:{time}, 摘要:{summary}",
+    "steamAccountNotice": "Steam 账户通知",
+    "pendingGifts": "{count} 个礼物",
+    "pendingFriends": "{count} 个好友邀请",
+    "pendingFamilies": "{count} 个家庭邀请",
+    "pendingBody": "账号 {account} 收到了: {msgs}。点击前往查看。",
+    "separator": "、"
   }
 }

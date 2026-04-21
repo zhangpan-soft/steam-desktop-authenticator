@@ -37,9 +37,26 @@ const handleImportAccount = () => {
 const handleExit = async () => {
   await window.ipcRenderer.invoke('close-window', {hash: '/'})
 }
+const handleNotifications = async () => {
+  if (!props.account_name) {
+    ElMessage.warning({
+      message: t('home.noAccountSelected'),
+      grouping: true,
+      showClose: true,
+      duration: 3000
+    })
+    return
+  }
+  await window.ipcRenderer.invoke('steam:open-notifications', { account_name: props.account_name })
+}
 const handleLoginAgain = async ()=>{
   if (!props.account_name){
-    ElMessage.warning(t('home.noAccountSelected'))
+    ElMessage.warning({
+      message: t('home.noAccountSelected'),
+      grouping: true,
+      showClose: true,
+      duration: 3000
+    })
     return
   }
   currentData.loginModelShow = true
@@ -53,7 +70,12 @@ const handleLoginFailed = async (err:any)=>{
 }
 const handleForceRefresh = async ()=>{
   if (!props.account_name){
-    ElMessage.warning(t('home.noAccountSelected'))
+    ElMessage.warning({
+      message: t('home.noAccountSelected'),
+      grouping: true,
+      showClose: true,
+      duration: 3000
+    })
     return
   }
   const refreshResult = await window.ipcRenderer.invoke('steam:RefreshLogin',{account_name: props.account_name})
@@ -65,7 +87,12 @@ const handleForceRefresh = async ()=>{
 }
 const handleRemove = async ()=>{
   if (!props.account_name){
-    ElMessage.warning(t('home.noAccountSelected'))
+    ElMessage.warning({
+      message: t('home.noAccountSelected'),
+      grouping: true,
+      showClose: true,
+      duration: 3000
+    })
     return
   }
   await window.ipcRenderer.invoke('settings:get',)
@@ -120,6 +147,7 @@ const switchLanguage = async (lang: 'en' | 'zh') => {
         <span class="menu-item-text">{{ t('header.selectedAccount') }}</span>
         <template #dropdown>
           <el-dropdown-menu>
+            <el-dropdown-item @click="handleNotifications">{{ t('header.notifications') }}</el-dropdown-item>
             <el-dropdown-item @click="handleLoginAgain">{{ t('header.loginAgain') }}</el-dropdown-item>
             <el-dropdown-item @click="handleForceRefresh">{{ t('header.forceRefresh') }}</el-dropdown-item>
             <el-dropdown-item divided @click="handleRemove">{{ t('header.remove') }}</el-dropdown-item>

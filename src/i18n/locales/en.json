@@ -8,7 +8,8 @@
     "selectedAccount": "Selected Account",
     "loginAgain": "Login again",
     "forceRefresh": "Force refresh",
-    "remove": "Remove"
+    "remove": "Remove",
+    "notifications": "Notifications"
   },
   "home": {
     "setupNewAccount": "Setup New Account",
@@ -86,7 +87,8 @@
     "badSmsCode": "Incorrect SMS code",
     "unhandledState": "Unhandled state: {state}",
     "phoneTitle": "Set Phone Number",
-    "phonePlaceholder": "Please input phone number"
+    "phonePlaceholder": "Please input phone number",
+    "countryCode": "Country Code"
   },
   "confirmations": {
     "title": "Confirmations",
@@ -99,6 +101,8 @@
     "confirmedSuccess": "Confirmed successfully",
     "canceledSuccess": "Canceled successfully",
     "failedAction": "Failed to {action}. {message}",
+    "accept": "Accept",
+    "cancel": "Cancel",
     "types": {
       "generic": "Generic",
       "trade": "Trade",
@@ -117,5 +121,23 @@
   },
   "errors": {
     "unknown": "Unknown Error"
+  },
+  "notifications": {
+    "tradeType": "Trade",
+    "marketType": "Market",
+    "tradeId": "Offer ID",
+    "marketId": "Market ID",
+    "autoConfirmTitle": "[{account}] Auto-confirmed {type}",
+    "confirmTitle": "[{account}] {type} Confirmation",
+    "warnConfirmTitle": "[{account}] Warning: {type} Confirmation",
+    "bodyAuto": "{idLabel}: {id}, Time: {time}, Summary: {summary}",
+    "bodyWarn": "Warning: {warn}, {idLabel}: {id}, Summary: {summary}",
+    "bodyNormal": "{idLabel}: {id}, Time: {time}, Summary: {summary}",
+    "steamAccountNotice": "Steam Account Notification",
+    "pendingGifts": "{count} pending gifts",
+    "pendingFriends": "{count} pending friend invites",
+    "pendingFamilies": "{count} pending family invites",
+    "pendingBody": "Account {account} received: {msgs}. Click to view.",
+    "separator": ", "
   }
 }

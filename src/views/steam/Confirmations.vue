@@ -101,10 +101,16 @@ const handleRespond = async (item: ConfirmationItem, action: 'accept' | 'cancel'
       ElMessage.error(t('confirmations.failedAction', { action, message: res.message || '' }))
     }
   } catch (e: any) {
-    ElMessage.error(e.message || 'Unknown error')
+    ElMessage.error(e.message || t('errors.unknown'))
   } finally {
     data.loading = false
   }
+}
+
+const handleRespondFromDetails = async (action: 'accept' | 'cancel') => {
+  if (!data.viewItem) return
+  await handleRespond(data.viewItem, action)
+  data.viewModel = false // 成功操作后关闭详情弹窗
 }
 
 </script>
@@ -119,7 +125,7 @@ const handleRespond = async (item: ConfirmationItem, action: 'accept' | 'cancel'
         <div
             v-for="item in data.list"
             :key="item.id"
-            class="confirmation-item"
+            :class="['confirmation-item', { 'has-warn': !!item.warn }]"
             @click="item.selected = !item.selected"
         >
           <div class="item-checkbox">
@@ -139,7 +145,10 @@ const handleRespond = async (item: ConfirmationItem, action: 'accept' | 'cancel'
               </el-tag>
               <div class="item-headline">{{ item.headline }}</div>
             </div>
-            <div class="item-summary" v-for="(line, idx) in item.summary" :key="idx">{{ line }}</div>
+            <div v-if="item.warn" class="item-warn-text">{{ item.warn }}</div>
+            <div v-if="item.summary && item.summary.length > 0" class="item-summary">
+              <div v-for="(line, idx) in item.summary" :key="idx">{{ line }}</div>
+            </div>
             <div class="item-time">{{ item.creation_time }}</div>
           </div>
           <div class="item-actions">
@@ -164,7 +173,7 @@ const handleRespond = async (item: ConfirmationItem, action: 'accept' | 'cancel'
   >
     <div v-if="data.viewItem" class="detail-content">
       <div class="detail-icon">
-        <el-image :src="data.viewItem.icon" fit="contain" style="width: 100px; height: 100px">
+        <el-image :src="data.viewItem.icon" fit="contain" style="width: 100px; height: 100px" :class="{ 'is-avatar-large': data.viewItem.type === 2 }">
           <template #error><el-icon size="50"><Picture /></el-icon></template>
         </el-image>
       </div>
@@ -178,6 +187,12 @@ const handleRespond = async (item: ConfirmationItem, action: 'accept' | 'cancel'
         <p><strong>{{ t('confirmations.type') }}:</strong> {{ getTypeLabel(data.viewItem.type) }}</p>
         <p><strong>{{ t('confirmations.time') }}:</strong> {{ data.viewItem.creation_time }}</p>
         <p><strong>{{ t('confirmations.id') }}:</strong> {{ data.viewItem.id }}</p>
+      </div>
+      
+      <!-- 详情页的操作按钮 -->
+      <div class="detail-actions">
+        <el-button type="danger" :icon="Close" @click="handleRespondFromDetails('cancel')">{{ t('confirmations.cancel') }}</el-button>
+        <el-button type="success" :icon="Check" @click="handleRespondFromDetails('accept')">{{ t('confirmations.accept') }}</el-button>
       </div>
     </div>
   </CustomDialog>
@@ -229,6 +244,11 @@ const handleRespond = async (item: ConfirmationItem, action: 'accept' | 'cancel'
 .confirmation-item:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.confirmation-item.has-warn {
+  background-color: var(--el-color-danger-light-9);
+  border-color: var(--el-color-danger-light-5);
 }
 
 .item-checkbox {
@@ -292,6 +312,13 @@ const handleRespond = async (item: ConfirmationItem, action: 'accept' | 'cancel'
   text-overflow: ellipsis;
 }
 
+.item-warn-text {
+  font-size: 13px;
+  font-weight: bold;
+  color: var(--el-color-danger);
+  margin-bottom: 4px;
+}
+
 .item-summary {
   font-size: 13px;
   color: var(--el-text-color-regular);
@@ -322,5 +349,13 @@ const handleRespond = async (item: ConfirmationItem, action: 'accept' | 'cancel'
   margin: 3px 0;
   font-size: 12px;
   color: var(--el-text-color-secondary);
+}
+.detail-actions {
+  margin-top: 24px;
+  display: flex;
+  justify-content: space-around;
+}
+.is-avatar-large {
+  border-radius: 50%;
 }
 </style>
