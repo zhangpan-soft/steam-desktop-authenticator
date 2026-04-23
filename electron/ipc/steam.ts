@@ -2,6 +2,7 @@ import ipcMainHandler from "./index.ts";
 import {SteamAccountDb} from "../db";
 import {SteamTimeSync, getSteamModel} from '../steam/models'
 import {openSteamNotificationsWindow} from "../utils/steam-browser.ts";
+import {toJson} from "../utils/json-util.ts";
 
 ipcMainHandler
     .handle('steam:login', async (event, args) => {
@@ -66,7 +67,7 @@ ipcMainHandler
     })
     .handle('steam:account:get', async (event, args) => {
         const {account_name, filepath, passkey} = {...args}
-        console.log(`args:${JSON.stringify(args)}`)
+        console.log(`args:${toJson(args)}`)
         if (filepath){
             const steamAccountDb = new SteamAccountDb(filepath, passkey)
             const model = getSteamModel(steamAccountDb.data.guard?.account_name || steamAccountDb.data.session?.account_name || 'unknown')

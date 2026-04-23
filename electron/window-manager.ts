@@ -2,13 +2,14 @@ import {app, BrowserWindow, BrowserWindowConstructorOptions, Notification} from 
 import {createRequire} from 'node:module'
 import {fileURLToPath} from 'node:url'
 import path from 'node:path'
-import {settingsDb} from "./db";
+import {paintIndexDb, settingsDb} from "./db";
 import {getSteamModel} from "./steam/models";
 import {DEFAULT_LANGUAGE} from "./steam/constants.ts";
 import {EResult} from "steam-session";
 import enLocale from '../src/i18n/locales/en.json'
 import zhLocale from '../src/i18n/locales/zh.json'
 import {openSteamNotificationsWindow} from "./utils/steam-browser.ts";
+import {GotHttpApiRequest} from "./utils/requests.ts";
 
 createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -259,6 +260,40 @@ app.whenReady().then(() => {
 
     // 启动轮询
     setTimeout(periodicCheck, 5000)
+
+    const paintIndexCheck = async ()=>{
+        try {
+            const nextSyncTime = paintIndexDb.get('nextSyncTime')
+            if (nextSyncTime && Date.now()<Number(nextSyncTime)){
+                return
+            }
+            await GotHttpApiRequest.get('https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/skins.json')
+                .param()
+                .requestConfig({
+                    timeout: settingsDb.data.timeout,
+                    proxies: settingsDb.data.proxy
+                })
+                .perform()
+                .then(res=>{
+                    const o = res.getBody<Record<string, any>[]>()
+                    for (let e of o) {
+                        try {
+                            paintIndexDb.data[e['name']] = e['weapon']['weapon_id']
+                        }catch (e) {
+                            console.error(e)
+                        }
+                    }
+                    paintIndexDb.data['nextSyncTime'] = String(Date.now() + 30*60*1000)
+                    paintIndexDb.update()
+                })
+        }catch (e){
+            console.error(e)
+        }
+
+        setTimeout(paintIndexCheck, 10*1000)
+    }
+
+    setTimeout(paintIndexCheck, 10*1000)
 })
 
 async function checkAccountConfirmations(entry: EntryType) {

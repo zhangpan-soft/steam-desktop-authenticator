@@ -1,5 +1,6 @@
 import {EResult} from "steam-session";
 import {Base64} from "js-base64";
+import {fromJson} from "../utils/json-util.ts";
 
 export function parseSteamResult<T>(response: IHttpResponse): SteamResponse<T> {
     const eresult = response.getHeaders()['x-eresult']
@@ -57,8 +58,8 @@ export function parseErrorResult<T>(reason: any): SteamResponse<T> {
 export function parseToken(token: string) {
     const parts = token.split('.')
     return {
-        header: JSON.parse(Base64.decode(parts[0])),
-        payload: JSON.parse(Base64.decode(parts[1])),
+        header: fromJson<Record<string, any>>(Base64.decode(parts[0])),
+        payload: fromJson<Record<string, any>>(Base64.decode(parts[1])),
         signature: parts[2]
     }
 }

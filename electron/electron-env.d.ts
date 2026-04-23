@@ -398,3 +398,119 @@ interface GetNotificationsResponse {
     unread_count: number
     pending_family_invite_count: number
 }
+
+interface InventoryAsset{
+    appid: number
+    contextid: string
+    assetid: string
+    classid: string
+    instanceid: string
+    amount: string
+}
+
+interface InventoryDescriptionDescription{
+    type: string
+    value: string
+    color: string
+    name: string
+}
+interface InventoryAction{
+    link: string
+    name: string
+}
+interface InventoryTag{
+    category: string
+    internal_name: string
+    localized_category_name: string
+    localized_tag_name: string
+}
+interface InventoryDescription{
+    appid: number
+    classid: string
+    instanceid: string
+    currency: boolean
+    background_color: string
+    icon_url: string
+    icon_url_large: string
+    descriptions: InventoryDescriptionDescription[]
+    owner_descriptions: InventoryDescriptionDescription[]
+    tradable: boolean
+    actions: InventoryAction[]
+    name: string
+    name_color: string
+    type: string
+    market_name: string
+    market_hash_name: string
+    market_actions: InventoryAction[]
+    commodity: boolean
+    market_tradable_restriction: number
+    market_marketable_restriction: number
+    marketable: boolean
+    sealed: boolean
+    market_bucket_group_name: string
+    market_bucket_group_id: string
+    sealed_type: number
+}
+
+interface InventoryAssetPropertyProperty{
+    propertyid: number // 1-图案模版, 2-磨损度, 5-改名, 7-皮肤编号 6-物品证书 4-印花磨损度 3-挂件模版
+    int_value?: string
+    float_value?: string
+    string_value?: string
+}
+
+interface InventoryAssetProperty{
+    appid: number
+    contextid: string
+    assetid: string
+    asset_properties: InventoryAssetPropertyProperty[]
+    asset_accessories:{
+        classid: string
+        parent_relationship_properties: InventoryAssetPropertyProperty[]
+    }[]
+}
+
+interface InventoryResponse{
+    total_inventory_count: number
+    assets: InventoryAsset[]
+    descriptions: InventoryDescription[]
+    asset_properties: InventoryAssetProperty[]
+}
+
+interface InventoryItem{
+    appid: number
+    contextid: string
+    assetid: string
+    classid: string
+    instanceid: string
+    amount: string
+    currency: boolean
+    background_color: string
+    icon_url: string
+    icon_url_large: string
+    descriptions: InventoryDescriptionDescription[]
+    owner_descriptions: InventoryDescriptionDescription[]
+    tradable: boolean
+    actions: InventoryAction[]
+    name: string
+    name_color: string
+    type: string
+    market_name: string
+    market_hash_name: string
+    market_actions: InventoryAction[]
+    commodity: boolean
+    market_tradable_restriction: number
+    market_marketable_restriction: number
+    marketable: boolean
+    sealed: boolean
+    market_bucket_group_name: string
+    market_bucket_group_id: string
+    sealed_type: number
+    properties: InventoryAssetPropertyProperty[]
+    cd_date?: number
+    float_value?: string
+    paint_seed?: string
+    paint_index?: string
+    templateIndex?: string
+    stickerFloatValues: string[]
+}

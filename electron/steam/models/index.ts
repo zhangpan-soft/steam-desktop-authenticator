@@ -1,6 +1,6 @@
 import {EAuthTokenPlatformType, EResult, LoginSession} from "steam-session";
 import {ConstructorOptions} from "steam-session/dist/interfaces-external";
-import {settingsDb, SteamAccountDb} from "../../db";
+import {paintIndexDb, settingsDb, SteamAccountDb} from "../../db";
 import {
     ACCESS_TOKEN_NAME,
     APP_VERSION_NAME,
@@ -36,6 +36,7 @@ import {util} from "protobufjs";
 import runtimeContext from "../../utils/runtime-context.ts";
 import windowManager from "../../window-manager.ts";
 import EventEmitter = util.EventEmitter;
+import {toJson} from "../../utils/json-util.ts";
 
 class SteamLoginModel extends EventEmitter {
     private _session?: LoginSession
@@ -295,24 +296,20 @@ export class SteamTimeSync {
 
     public static instance: SteamTimeSync = new SteamTimeSync()
 
-    readonly syncThread: any
-
-    private isFirst: boolean = false
-
     private constructor() {
+        this.scheduleNextSync().then()
+    }
 
-        this.syncThread = setInterval(async () => {
-            if (this.isFirst) {
-                for (let i = 0; i < 3; i++) {
-                    await this.syncTime()
-                    if (this.timeNextSyncTime > 0) {
-                        break
-                    }
-                }
-            } else {
-                await this.syncTime()
-            }
-        }, 30000)
+    private async scheduleNextSync() {
+        try {
+            // The original code had an `isFirst` flag that was never updated, making the retry logic dead code.
+            // This simplified version maintains the actual behavior in a safer way.
+            await this.syncTime()
+        } catch (e) {
+            console.error('Error during time sync:', e)
+        } finally {
+            setTimeout(() => this.scheduleNextSync(), 30000)
+        }
     }
 
     private async syncTime() {
@@ -491,6 +488,8 @@ class SteamAccountModel implements SteamAccount {
 
     notification: SteamNotificationModel
 
+    econ: SteamEconModel
+
     private db: SteamAccountDb
 
     constructor(account_name: string, passkey?: string) {
@@ -505,6 +504,7 @@ class SteamAccountModel implements SteamAccount {
         this.mobileDevice = new SteamMobileDeviceModel(this.session)
         this.phone = new SteamPhoneModel(this.session)
         this.notification = new SteamNotificationModel(this.session)
+        this.econ = new SteamEconModel(this.session)
 
         this.login.on('login-status', (event: SteamLoginEvent) => {
 
@@ -523,11 +523,20 @@ class SteamAccountModel implements SteamAccount {
 
         this.checkSession().then()
 
-        console.log(`session:${JSON.stringify(this.session)},guard:${JSON.stringify(this.guard)}`)
+        console.log(`session:${toJson(this.session)},guard:${toJson(this.guard)}`)
 
-        setInterval(() => {
-            this.checkSession().then()
-        }, 5 * 60 * 1000)
+        this.scheduleSessionCheck().then()
+    }
+
+    private async scheduleSessionCheck() {
+        try {
+            await this.checkSession()
+        } catch (e) {
+            const accountName = this.session?.account_name || this.login.account_name || 'unknown'
+            console.error(`[${accountName}] Error during session check:`, e)
+        } finally {
+            setTimeout(() => this.scheduleSessionCheck(), 5 * 60 * 1000)
+        }
     }
 
     private async checkSession(): Promise<boolean> {
@@ -939,6 +948,155 @@ class SteamAccountModel implements SteamAccount {
         }
     }
 
+}
+
+class SteamEconModel {
+    session?: SteamSession
+    constructor(session?: SteamSession) {
+        this.session = session
+    }
+
+    async getCs2Inventory() {
+        if (!this.session) {
+            return undefined; // 保持你原有的未登录拦截逻辑
+        }
+
+        const [r1, r2] = await Promise.allSettled([
+            this._getInventory('2', '730'),
+            this._getInventory('16', '730')
+        ]);
+
+        // 提取数据：如果成功且有值，则取其值；否则统一赋值为空数组 []
+        const inv1 = (r1.status === 'fulfilled' && r1.value) ? r1.value : [];
+        const inv2 = (r2.status === 'fulfilled' && r2.value) ? r2.value : [];
+
+        return inv1.concat(inv2);
+    }
+
+    private async _getInventory(contextid: string, appid: string){
+        if (!this.session){
+            return undefined
+        }
+        return GotHttpApiRequest.get(getEndpoints('Econ', 'GetInventoryItemsWithDescriptions', 1))
+            .param(ACCESS_TOKEN_NAME, this.session.access_token)
+            .param(STEAM_ID_NAME, this.session.SteamID)
+            .param('contextid', contextid)
+            .param('appid', appid)
+            .param('get_descriptions', true)
+            .param('for_trade_offer_verification', false)
+            .param('language', DEFAULT_LANGUAGE)
+            .param('start_assetid', 0)
+            .param('count', 5000)
+            .param('get_asset_properties', true)
+            .param()
+            .userAgent(DEFAULT_USER_AGENT)
+            .requestConfig({
+                timeout: settingsDb.data.timeout,
+                proxies: settingsDb.data.proxy
+            })
+            .referer(STEAM_COMMUNITY_BASE)
+            .perform()
+            .then(res => parseSteamCommunityResult<InventoryResponse>(res))
+            .catch(reason => parseErrorResult<InventoryResponse>(reason))
+            .then(res=>{
+                if (res.eresult !== EResult.OK){
+                    return undefined
+                }
+                if (!res.response){
+                    return undefined
+                }
+                const dp:Map<string, InventoryDescription> = new Map<string, InventoryDescription>()
+                for (let description of res.response.descriptions) {
+                    dp.set(description.classid+"$"+description.instanceid, description)
+                }
+                const ap:Map<string, InventoryAssetProperty> = new Map<string, InventoryAssetProperty>()
+                for (let property of res.response.asset_properties) {
+                    ap.set(property.assetid, property)
+                }
+                return res.response.assets.flatMap(asset=>{
+                    const item:InventoryItem = {} as InventoryItem
+                    item.appid = asset.appid
+                    item.contextid = asset.contextid
+                    item.assetid = asset.assetid
+                    item.classid = asset.classid
+                    item.instanceid = asset.instanceid
+                    item.amount = asset.amount
+                    const d = dp.get(item.classid+"$"+item.instanceid)
+                    if (d){
+                        item.currency = d.currency
+                        item.background_color = d.background_color
+                        item.icon_url = d.icon_url
+                        item.icon_url_large = d.icon_url_large
+                        item.descriptions = d.descriptions
+                        item.tradable = d.tradable
+                        item.actions = d.actions
+                        item.name = d.name
+                        item.name_color = d.name_color
+                        item.type = d.type
+                        item.market_name = d.market_name
+                        item.market_hash_name = d.market_hash_name
+                        item.market_actions = d.market_actions
+                        item.commodity = d.commodity
+                        item.market_tradable_restriction = d.market_tradable_restriction
+                        item.market_marketable_restriction = d.market_marketable_restriction
+                        item.marketable = d.marketable
+                        item.sealed = d.sealed
+                        item.market_bucket_group_name = d.market_bucket_group_name
+                        item.market_bucket_group_id = d.market_bucket_group_id
+                        item.sealed_type = d.sealed_type
+                        item.owner_descriptions = d.owner_descriptions
+                        item.cd_date = this._getCdDate(d)?.getTime()
+                    }
+                    const a = ap.get(item.assetid)
+                    if (a){
+                        const paintSeed = a.asset_properties.find(value => value.propertyid == 1)
+                        const paintIndex = a.asset_properties.find(value => value.propertyid == 7)
+                        const floatValue = a.asset_properties.find(value => value.propertyid == 2)
+                        item.paint_seed = String(paintSeed?.int_value || '')
+                        item.paint_index = String(paintIndex?.int_value || '')
+                        item.float_value = String(floatValue?.float_value || '')
+                        if (floatValue && !paintIndex){
+                            item.paint_index = paintIndexDb.get(item.name.replace(/(^(Normal|StatTrak™|★ StatTrak™|★|Souvenir))|(\(Factory New\)|\(Minimal Wear\)|\(Field-Tested\)|\(Well-Worn\)|\(Battle-Scarred\)|\(Gold\)\s|\(Foil\)\s|\(Glitter\)\s|\(Holo\)\s|\(Normal\)\s)/g, ''))
+                        }
+                        const templateIndex = a.asset_properties.find(value => value.propertyid == 3)
+                        item.templateIndex = String(templateIndex?.int_value || '')
+                        if (a.asset_accessories){
+                            const ss = []
+                            for (let assetAccessory of a.asset_accessories) {
+                                for (let parentRelationshipProperty of assetAccessory.parent_relationship_properties) {
+                                    if (parentRelationshipProperty.propertyid == 4){
+                                        let f = parentRelationshipProperty.float_value
+                                        if (!f){
+                                            f = '0'
+                                        }
+                                        f = (1-Number(f)).toFixed(2).toString() + '%'
+                                        ss.push(f)
+                                    }
+                                }
+                            }
+                            item.stickerFloatValues = ss
+                        }
+                    }
+
+                    return item
+                })
+            })
+    }
+
+    private _getCdDate(destription: InventoryDescription){
+        if (!destription) return undefined
+        if (destription.tradable) return undefined
+        if (!destription.owner_descriptions) return undefined
+        for (let ownerDescription of destription.owner_descriptions) {
+            if (!ownerDescription.value){
+                continue
+            }
+            const cdDate = parseToLocalTime(ownerDescription.value)
+            if (cdDate){
+                return cdDate
+            }
+        }
+    }
 }
 
 const models: Map<string, SteamAccountModel> = new Map<string, SteamAccountModel>()

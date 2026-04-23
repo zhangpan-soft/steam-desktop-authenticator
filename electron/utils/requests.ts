@@ -1,7 +1,8 @@
 import got, {Response, Method, OptionsInit} from 'got';
 import { HttpProxyAgent, HttpsProxyAgent } from 'hpagent';
 import {SocksProxyAgent} from "socks-proxy-agent";
-import * as querystring from "node:querystring"; // 用于处理代理
+import * as querystring from "node:querystring";
+import {fromJson} from "./json-util.ts"; // 用于处理代理
 
 // ---------------------------------------------------------
 // 1. 响应体实现 (GotHttpResponse)
@@ -73,7 +74,7 @@ export class GotHttpResponse implements IHttpResponse {
 
     getBody<T>(): T {
         try {
-            return JSON.parse(this.response.body);
+            return fromJson<T>(this.response.body);
         } catch {
             return this.response.body as unknown as T;
         }
@@ -242,7 +243,7 @@ export class GotHttpApiRequest implements IHttpUri, IHttpBody, IHttpParam, IHttp
             this._contentType = 'application/json';
         } else if (typeof json === 'string') {
             try {
-                this._jsonBody = JSON.parse(json);
+                this._jsonBody = fromJson(json);
             } catch {
                 this._jsonBody = json; // Fallback or raw string
             }

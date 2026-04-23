@@ -3,6 +3,7 @@ import {app} from "electron";
 import {JSONFileSyncPreset, TextFileSync} from "lowdb/node";
 import {LowSync, SyncAdapter} from "lowdb";
 import * as crypto from "node:crypto";
+import {fromJson, toJson} from "../utils/json-util.ts";
 
 // --- 1. Settings 定义 ---
 // 将 path 计算移出顶层，防止 app.ready 前调用崩溃
@@ -101,9 +102,9 @@ class SteamAccountAdapter implements SyncAdapter<SteamAccount> {
     private parseJson(content: string){
 
         console.log(`content:${content}`)
-        const temp = JSON.parse(content);
+        const temp = fromJson<any>(content);
         if (temp.shared_secret){
-            console.log(`temp1:${JSON.stringify(temp)}`)
+            console.log(`temp1:${toJson(temp)}`)
             return {
                 guard: {
                     shared_secret: temp.shared_secret,
@@ -122,7 +123,7 @@ class SteamAccountAdapter implements SyncAdapter<SteamAccount> {
                 session: temp.Session || temp.session
             }
         } else {
-            console.log(`temp2:${JSON.stringify(temp)}`)
+            console.log(`temp2:${toJson(temp)}`)
             return {
                 session: temp.Session || temp.session,
                 guard: temp.guard
@@ -171,7 +172,7 @@ class SteamAccountAdapter implements SyncAdapter<SteamAccount> {
 
     write(data: SteamAccount) {
         if (!this.passkey) {
-            this.delegate.write(JSON.stringify(data))
+            this.delegate.write(toJson(data))
             return;
         }
 
@@ -185,7 +186,7 @@ class SteamAccountAdapter implements SyncAdapter<SteamAccount> {
         const cipher = crypto.createCipheriv(this.ALGORITHM, key, iv);
 
         // ✅ update 输出 'hex'，这样文件体积小且无特殊字符
-        let encrypted = cipher.update(JSON.stringify(data), 'utf8', 'hex');
+        let encrypted = cipher.update(toJson(data), 'utf8', 'hex');
         encrypted += cipher.final('hex');
 
         const tag = cipher.getAuthTag().toString('hex');
@@ -195,8 +196,36 @@ class SteamAccountAdapter implements SyncAdapter<SteamAccount> {
     }
 }
 
+class PaintIndexDb{
+    private db: LowSync<Record<string, string>>
+
+    data: Record<string, string>
+
+    constructor() {
+        this.db = JSONFileSyncPreset<Record<string, string>>(
+            path.join(app.getPath('userData'), 'paint_index.json'),
+            {}
+        )
+        this.db.read()
+        this.data = this.db.data
+    }
+
+    get(key: string): string | undefined {
+        return this.db.data[key]
+    }
+
+    update() {
+        this.db.data = {...this.db.data, ...this.data}
+        this.db.write()
+        this.data = this.db.data
+    }
+}
+
+const paintIndexDb = new PaintIndexDb()
+
 export {
     settingsDb,
     SteamAccountDb,
-    SettingsDb
+    SettingsDb,
+    paintIndexDb
 }

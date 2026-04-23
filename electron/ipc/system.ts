@@ -7,6 +7,7 @@ import ipcMainHandler from "./index.ts";
 import {settingsDb} from "../db";
 import runtimeContext from "../utils/runtime-context.ts";
 import {getSteamModel} from "../steam/models";
+import {fromJson} from "../utils/json-util.ts";
 
 
 ipcMainHandler
@@ -42,7 +43,7 @@ ipcMainHandler
                 throw new Error('manifest.json not found')
             }
             const manifestText = await fs.readFile(manifest_path, 'utf8')
-            const manifest = JSON.parse(manifestText)
+            const manifest = fromJson<any>(manifestText)
             if (!manifest.entries || manifest.entries.length == 0) {
                 throw new Error('manifest.json entries is empty')
             }

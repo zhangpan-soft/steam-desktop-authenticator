@@ -1,6 +1,7 @@
 import * as crypto from 'crypto';
 import path from "node:path";
 import * as fs from 'node:fs/promises';
+import {fromJson} from "./utils/json-util.ts";
 
 export interface EncryptionData {
     salt: string; // Base64 string from manifest.json
@@ -104,7 +105,7 @@ export async function readMaFile(maFilePath: string, options?:{passkey?: string,
     if (options && options?.passkey){
         const _ = await fs.readFile(maFilePath, 'utf8')
         const data = SDAFileEncryptor.decrypt(_, options.passkey, options?.salt||'', options?.iv||'')
-        const _data = JSON.parse(data)
+        const _data = fromJson<any>(data)
         return {
             account_name: _data.account_name,
             maFileFilename: maFileParse.base,
@@ -114,7 +115,7 @@ export async function readMaFile(maFilePath: string, options?:{passkey?: string,
     } else {
         const data = await fs.readFile(maFilePath, 'utf8')
         console.log('=================', data)
-        const _data = JSON.parse(data)
+        const _data = fromJson<any>(data)
         return {
             account_name: _data.account_name,
             maFileFilename: maFileParse.base,
