@@ -17,6 +17,11 @@ const router = createRouter({
       path: '/steam/cs2-inventory',
       name: 'cs2-inventory',
       component: import('../views/steam/Cs2Inventory.vue'),
+    },
+    {
+      path: '/steam/login',
+      name: 'steam-login',
+      component: import('../views/steam/LoginView.vue'),
     }
   ]
 })

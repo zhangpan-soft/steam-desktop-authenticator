@@ -90,7 +90,7 @@
     "autoConfirmMarket": "Auto-confirm market transactions",
     "autoConfirmTrades": "Auto-confirm trades",
     "proxyHint": "Please setting the httpProxy or socksProxy. If in China",
-    "proxyPlaceholder": "http[s]|socks5://username@password:ip:port",
+    "proxyPlaceholder": "http[s]|socks5://username{'@'}password:ip:port",
     "timeout": "Timeout of requests in milliseconds"
   },
   "steamLogin": {
@@ -105,6 +105,10 @@
     "loginFailed": "Login Failed",
     "loginFailedRetry": "Login Failed, Please Re-Try Later.{result}",
     "loginFailedError": "Login Failed, {result}, {errorMessage}."
+  },
+  "accountHealth": {
+    "loginWindowTitle": "{account} needs sign-in",
+    "loginSuccess": "{account} session restored"
   },
   "setupNewAccount": {
     "loadingText": "Setting up new account...",

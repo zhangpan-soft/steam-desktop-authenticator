@@ -124,7 +124,7 @@ ipcMainHandler
         windowManager.addChild(uri, options)
     })
     .handle('close-window', async (event, args) => {
-        windowManager.close(args.hash)
+        windowManager.close(args.key || args.hash)
     })
     .handle('settings:get', async (event, args) => {
         return settingsDb.data

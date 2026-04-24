@@ -57,7 +57,7 @@ function t(keyPath: string, args?: Record<string, any>): string {
 class WindowManager {
     private _main: BrowserWindow | null = null
     private _preload: string
-    private readonly _child: Map<WindowHashType, BrowserWindow> = new Map<WindowHashType, BrowserWindow>()
+    private readonly _child: Map<string, BrowserWindow> = new Map<string, BrowserWindow>()
 
     constructor() {
         this._preload = path.join(__dirname, 'preload.mjs')
@@ -99,9 +99,14 @@ class WindowManager {
         return new BrowserWindow(options)
     }
 
+    private _windowKey(uri: WindowUri) {
+        return uri.hash === '/' ? '/' : (uri.key || uri.hash)
+    }
+
     private _load(uri: WindowUri) {
         uri = {...uri}
         uri.hash = uri.hash || '/'
+        const windowKey = this._windowKey(uri)
         // 1. 拿到基础 Hash，比如 '/login'
         let finalHash = uri.hash || '/';
 
@@ -116,7 +121,7 @@ class WindowManager {
         if (uri.hash === '/') {
             win = this._main
         } else {
-            win = this._child.get(uri.hash)
+            win = this._child.get(windowKey)
         }
 
         if (!win) {
@@ -147,78 +152,169 @@ class WindowManager {
         }
 
 
-        const existingWin = this._child.get(uri.hash);
+        const windowKey = this._windowKey(uri)
+        const existingWin = this._child.get(windowKey);
         if (existingWin && !existingWin.isDestroyed()) {
             this._load(uri)
             existingWin.show()
+            existingWin.focus()
             return
         } else {
-            this._child.delete(uri.hash)
+            this._child.delete(windowKey)
         }
 
         const win = this._createWindow(options)
-        this._child.set(uri.hash, win)
+        this._child.set(windowKey, win)
         this._load(uri)
 
         win.on('closed', () => {
-            this._child.delete(uri.hash)
+            this._child.delete(windowKey)
         })
         win.show()
         win.focus()
     }
 
-    public removeChild(hash: WindowHashType) {
-        if (this._child.has(hash)) {
-            this._child.get(hash)?.close()
-            this._child.delete(hash)
+    public hasChild(key: string) {
+        return this._child.has(key) && !this._child.get(key)?.isDestroyed()
+    }
+
+    public removeChild(key: string) {
+        if (this._child.has(key)) {
+            this._child.get(key)?.close()
+            this._child.delete(key)
         }
     }
 
-    public sendEvent(hash: WindowHashType, channel: ElectronMessageChannel, ...args: any[]) {
-        if (hash === '/') {
+    public sendEvent(key: string, channel: ElectronMessageChannel, ...args: any[]) {
+        if (key === '/') {
             this._main?.webContents.send(channel, ...args)
-        } else if (this._child.has(hash)) {
-            this._child.get(hash)?.webContents.send(channel, ...args)
+        } else if (this._child.has(key)) {
+            this._child.get(key)?.webContents.send(channel, ...args)
         }
     }
 
-    public show(hash: WindowHashType) {
-        if (hash === '/') {
+    public show(key: string) {
+        if (key === '/') {
             this._main?.show()
-        } else if (this._child.has(hash)) {
-            this._child.get(hash)?.show()
-            this._child.get(hash)?.focus()
+        } else if (this._child.has(key)) {
+            this._child.get(key)?.show()
+            this._child.get(key)?.focus()
         }
     }
 
-    public hide(hash: WindowHashType) {
-        if (hash === '/') {
+    public hide(key: string) {
+        if (key === '/') {
             this._main?.hide()
-        } else if (this._child.has(hash)) {
-            this._child.get(hash)?.hide()
+        } else if (this._child.has(key)) {
+            this._child.get(key)?.hide()
         }
     }
 
-    public close(hash: WindowHashType) {
-        if (hash === '/') {
+    public close(key: string) {
+        if (key === '/') {
             this._main?.close()
             this._main = null
-        } else if (this._child.has(hash)) {
-            this._child.get(hash)?.close()
-            this._child.delete(hash)
+        } else if (this._child.has(key)) {
+            this._child.get(key)?.close()
+            this._child.delete(key)
         }
     }
 
-    public getWindow(hash: WindowHashType) {
-        if (hash === '/') {
+    public getWindow(key: string) {
+        if (key === '/') {
             return this._main
-        } else if (this._child.has(hash)) {
-            return this._child.get(hash)
+        } else if (this._child.has(key)) {
+            return this._child.get(key)
         }
     }
 }
 
 const windowManager = new WindowManager()
+const RELOGIN_PROMPT_COOLDOWN = 5 * 60 * 1000
+const reloginPromptedAt = new Map<string, number>()
+
+function getLoginWindowKey(accountName: string) {
+    return `steam-login:${accountName}`
+}
+
+function getEntriesToCheck() {
+    if (settingsDb.data.periodic_checking_checkall) {
+        return settingsDb.data.entries
+    }
+    if (!runtimeContext.selectedAccount?.account_name) {
+        return []
+    }
+    return settingsDb.data.entries.filter(entry => entry.account_name === runtimeContext.selectedAccount?.account_name)
+}
+
+async function checkAccountHealth(entry: EntryType): Promise<AccountHealthResult> {
+    const checkedAt = Date.now()
+    try {
+        const model = getSteamModel(entry.account_name)
+        const sessionIsValid = await model.session.checkSession()
+        if (!sessionIsValid) {
+            return {
+                account_name: entry.account_name,
+                steamid: entry.steamid,
+                status: 'login_required',
+                healthy: false,
+                reason: model.session.lastSessionError || 'sessionExpired',
+                checked_at: checkedAt
+            }
+        }
+
+        reloginPromptedAt.delete(entry.account_name)
+        return {
+            account_name: entry.account_name,
+            steamid: entry.steamid,
+            status: model.guard ? 'ok' : 'missing_guard',
+            healthy: true,
+            checked_at: checkedAt
+        }
+    } catch (e: any) {
+        return {
+            account_name: entry.account_name,
+            steamid: entry.steamid,
+            status: 'checking_failed',
+            healthy: false,
+            reason: e?.message || String(e),
+            checked_at: checkedAt
+        }
+    }
+}
+
+function openReloginWindow(entry: EntryType, reason?: string) {
+    const windowKey = getLoginWindowKey(entry.account_name)
+    if (windowManager.hasChild(windowKey)) {
+        return
+    }
+
+    const lastPromptedAt = reloginPromptedAt.get(entry.account_name) || 0
+    if (Date.now() - lastPromptedAt < RELOGIN_PROMPT_COOLDOWN) {
+        return
+    }
+
+    reloginPromptedAt.set(entry.account_name, Date.now())
+    windowManager.addChild({
+        hash: '/steam/login',
+        key: windowKey,
+        query: {
+            account_name: entry.account_name,
+            window_key: windowKey,
+            reason: reason || 'sessionExpired'
+        }
+    }, {
+        width: 420,
+        height: 360,
+        useContentSize: true,
+        resizable: false,
+        maximizable: false,
+        minimizable: true,
+        show: false,
+        icon: 'icon.png',
+        title: t('accountHealth.loginWindowTitle', {account: entry.account_name})
+    })
+}
 
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
@@ -244,12 +340,10 @@ app.whenReady().then(() => {
                                           settingsDb.data.auto_confirm_market_transactions;
 
                 if (isCheckingEnabled) {
-                    const entriesToCheck = settingsDb.data.periodic_checking_checkall
-                        ? settingsDb.data.entries
-                        : settingsDb.data.entries.filter(entry => entry.account_name === runtimeContext.selectedAccount?.account_name)
-
-                    for (let entry of entriesToCheck) {
-                        await checkAccountConfirmations(entry)
+                    if (!(settingsDb.data.encrypted && !runtimeContext.passkey)) {
+                        for (let entry of getEntriesToCheck()) {
+                            await checkAccountConfirmations(entry)
+                        }
                     }
                 }
             }
@@ -268,28 +362,27 @@ app.whenReady().then(() => {
     const paintIndexCheck = async ()=>{
         try {
             const nextSyncTime = paintIndexDb.get('nextSyncTime')
-            if (nextSyncTime && Date.now()<Number(nextSyncTime)){
-                return
-            }
-            await GotHttpApiRequest.get('https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/skins.json')
-                .param()
-                .requestConfig({
-                    timeout: 30000,
-                    proxies: settingsDb.data.proxy
-                })
-                .perform()
-                .then(res=>{
-                    const o = res.getBody<Record<string, any>[]>()
-                    for (let e of o) {
-                        try {
-                            paintIndexDb.data[e['name']] = e['weapon']['weapon_id']
-                        }catch (e) {
-                            console.error(e)
+            if (!nextSyncTime || Date.now() >= Number(nextSyncTime)){
+                await GotHttpApiRequest.get('https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/skins.json')
+                    .param()
+                    .requestConfig({
+                        timeout: 30000,
+                        proxies: settingsDb.data.proxy
+                    })
+                    .perform()
+                    .then(res=>{
+                        const o = res.getBody<Record<string, any>[]>()
+                        for (let e of o) {
+                            try {
+                                paintIndexDb.data[e['name']] = e['weapon']['weapon_id']
+                            }catch (e) {
+                                console.error(e)
+                            }
                         }
-                    }
-                    paintIndexDb.data['nextSyncTime'] = String(Date.now() + 30*60*1000)
-                    paintIndexDb.update()
-                })
+                        paintIndexDb.data['nextSyncTime'] = String(Date.now() + 30*60*1000)
+                        paintIndexDb.update()
+                    })
+            }
         }catch (e){
             console.error(e)
         }
@@ -301,6 +394,15 @@ app.whenReady().then(() => {
 })
 
 async function checkAccountConfirmations(entry: EntryType) {
+    const health = await checkAccountHealth(entry)
+    windowManager.sendEvent('/', 'steam:account-health-changed', health)
+    if (health.status === 'login_required') {
+        openReloginWindow(entry, health.reason)
+    }
+    if (!health.healthy) {
+        return
+    }
+
     const model = getSteamModel(entry.account_name)
     const res = await model.notification.getNotifications({
         include_hidden: false,

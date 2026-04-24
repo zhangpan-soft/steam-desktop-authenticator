@@ -279,9 +279,6 @@ class SteamSessionModel implements SteamSession{
         this.account_name = account_name
         this._onSessionUpdated = onSessionUpdated
         this.reload(session)
-        this.checkSession().then()
-
-        this.scheduleSessionCheck().then()
     }
 
     private _sessionNumber(value: any, fallback = -1) {
@@ -542,6 +539,7 @@ class SteamSessionModel implements SteamSession{
 
     private _sendEvent(event: SteamLoginEvent){
         windowManager.sendEvent('/', 'steam:message:login-status-changed', event)
+        windowManager.sendEvent(`steam-login:${event.account_name}`, 'steam:message:login-status-changed', event)
     }
 
     public async checkSession(): Promise<boolean> {
@@ -570,15 +568,6 @@ class SteamSessionModel implements SteamSession{
         }
     }
 
-    private async scheduleSessionCheck() {
-        try {
-            await this.checkSession()
-        } catch (e) {
-            console.error(`[${this.account_name}] Error during session check:`, e)
-        } finally {
-            setTimeout(() => this.scheduleSessionCheck(), 5 * 60 * 1000)
-        }
-    }
 }
 
 class SteamAccountModel implements SteamAccount {

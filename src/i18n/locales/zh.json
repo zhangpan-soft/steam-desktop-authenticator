@@ -90,7 +90,7 @@
     "autoConfirmMarket": "自动确认市场交易",
     "autoConfirmTrades": "自动确认交易",
     "proxyHint": "如果在中国大陆，请设置 http/socks 代理",
-    "proxyPlaceholder": "http[s]|socks5://username@password:ip:port",
+    "proxyPlaceholder": "http[s]|socks5://username{'@'}password:ip:port",
     "timeout": "请求超时时间（毫秒）"
   },
   "steamLogin": {
@@ -105,6 +105,10 @@
     "loginFailed": "登录失败",
     "loginFailedRetry": "登录失败，请稍后重试。{result}",
     "loginFailedError": "登录失败，{result}，{errorMessage}。"
+  },
+  "accountHealth": {
+    "loginWindowTitle": "{account} 需要重新登录",
+    "loginSuccess": "{account} 登录状态已恢复"
   },
   "setupNewAccount": {
     "loadingText": "正在设置新账户...",

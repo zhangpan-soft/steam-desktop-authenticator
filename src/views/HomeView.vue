@@ -124,7 +124,7 @@ onUnmounted(() => {
   width: 100%;
 }
 
-.full-width-group .el-button {
+.full-width-group :deep(.el-button) {
   flex: 1;
 }
 

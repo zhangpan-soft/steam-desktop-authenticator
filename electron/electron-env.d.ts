@@ -39,6 +39,7 @@ type ElectronMessageChannel =
     | 'context:get'
     | 'context:set'
     | 'steam:message:login-success-from-window'
+    | 'steam:account-health-changed'
     | SteamMessageChannel
 
 type SteamMessageChannel =
@@ -61,7 +62,19 @@ type WindowHashType = '/' | '/steam/confirmations' | '/steam/login' | '/steam/co
 
 type WindowUri = {
     hash: WindowHashType
+    key?: string
     query?: Record<string, string>
+}
+
+type AccountHealthStatus = 'ok' | 'missing_guard' | 'login_required' | 'checking_failed'
+
+interface AccountHealthResult {
+    account_name: string
+    steamid?: string
+    status: AccountHealthStatus
+    healthy: boolean
+    reason?: string
+    checked_at: number
 }
 
 type SteamLoginType = 'NewAccount' | 'ImportSda' | 'RefreshToken' | 'ReLogin'
