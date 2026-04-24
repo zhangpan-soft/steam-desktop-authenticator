@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import {onMounted, onUnmounted, reactive} from 'vue'
+import {ElMessage} from 'element-plus'
 import Passkey from "../components/Passkey.vue";
 import Initializing from "../components/Initializing.vue";
 import HeaderMenu from "../components/HeaderMenu.vue";
@@ -15,6 +16,8 @@ type CurrentDataType = {
   account: EntryType,
   passkeyModel: boolean
   initializingModel: boolean
+  updateChecking: boolean
+  updateStatus: UpdateStatusType
 }
 
 const { t } = useI18n()
@@ -25,7 +28,9 @@ const currentData = reactive<CurrentDataType>({
   account: {
     account_name: '',
     steamid: '',
-  }
+  },
+  updateChecking: false,
+  updateStatus: 'idle'
 })
 
 const selectAccount = async (acc: EntryType) => {
@@ -37,7 +42,41 @@ const selectAccount = async (acc: EntryType) => {
   await window.ipcRenderer.invoke('context:set', {selectedAccount})
 }
 
+const handleUpdateStatusChanged = (_event: any, status: UpdateStatus) => {
+  currentData.updateStatus = status.status
+  currentData.updateChecking = status.status === 'checking' || status.status === 'downloading'
+  if (status.status === 'downloaded') {
+    ElMessage.success(t('updater.downloaded'))
+  }
+}
+
+const handleCheckForUpdates = async () => {
+  if (currentData.updateChecking) return
+  currentData.updateChecking = true
+  currentData.updateStatus = 'checking'
+  try {
+    const status: UpdateStatus = await window.ipcRenderer.invoke('update:check', {manual: true})
+    currentData.updateStatus = status.status
+    switch (status.status) {
+      case 'not-available':
+        ElMessage.info(t('updater.noUpdate'))
+        break
+      case 'unsupported':
+        ElMessage.warning(t('updater.notPackaged'))
+        break
+      case 'error':
+        ElMessage.error(t('updater.checkFailed', {message: status.error || t('errors.unknown')}))
+        break
+    }
+  } catch (e: any) {
+    ElMessage.error(t('updater.checkFailed', {message: e?.message || t('errors.unknown')}))
+  } finally {
+    currentData.updateChecking = false
+  }
+}
+
 onMounted(async () => {
+  window.ipcRenderer.on('update:status-changed', handleUpdateStatusChanged)
   const settings: Settings = await window.ipcRenderer.invoke('settings:get',)
   const context: RuntimeContext = await window.ipcRenderer.invoke('context:get')
   if (context.selectedAccount) {
@@ -58,6 +97,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  window.ipcRenderer.off('update:status-changed', handleUpdateStatusChanged)
 })
 
 </script>
@@ -95,7 +135,13 @@ onUnmounted(() => {
     </el-main>
     <el-footer>
       <el-row justify="space-between" align="middle" style="height: 100%; padding: 0 5px;">
-        <el-text size="small">{{ t('home.checkForUpdates') }}</el-text>
+        <el-text size="small" class="update-link" @click="handleCheckForUpdates">
+          {{
+            currentData.updateStatus === 'downloading'
+                ? t('updater.downloading')
+                : currentData.updateChecking ? t('updater.checking') : t('home.checkForUpdates')
+          }}
+        </el-text>
         <el-text size="small">v{{ pkg.version }}</el-text>
       </el-row>
     </el-footer>
@@ -141,6 +187,10 @@ onUnmounted(() => {
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
+}
+
+.update-link {
+  cursor: pointer;
 }
 
 </style>

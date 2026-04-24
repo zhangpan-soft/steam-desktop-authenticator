@@ -8,6 +8,7 @@ import {settingsDb, SteamAccountDb} from "../db";
 import runtimeContext from "../utils/runtime-context.ts";
 import {getSteamModel} from "../steam/models";
 import {fromJson} from "../utils/json-util.ts";
+import {checkForUpdates, installUpdate} from "../updater.ts";
 
 
 ipcMainHandler
@@ -136,6 +137,12 @@ ipcMainHandler
     })
     .handle('context:get', async (event, args) => {
         return {...runtimeContext}
+    })
+    .handle('update:check', async (event, args) => {
+        return checkForUpdates(Boolean(args?.manual))
+    })
+    .handle('update:install', async () => {
+        installUpdate()
     })
     .handle('context:set', async (event, args) => {
         if (Object.prototype.hasOwnProperty.call(args, 'selectedAccount')) {

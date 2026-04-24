@@ -33,7 +33,8 @@ export default defineConfig(({ mode }) => {
                                 'steam-totp',
                                 'steam-crypto',
                                 'got',
-                                'steamcommunity'
+                                'steamcommunity',
+                                'electron-updater'
                             ],
                         },
                     },

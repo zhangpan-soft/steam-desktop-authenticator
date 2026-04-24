@@ -110,6 +110,23 @@
     "loginWindowTitle": "{account} needs sign-in",
     "loginSuccess": "{account} session restored"
   },
+  "updater": {
+    "checking": "Checking for updates...",
+    "noUpdate": "You are already on the latest version",
+    "notPackaged": "Updates cannot be checked in development mode",
+    "checkFailed": "Failed to check for updates. {message}",
+    "updateAvailableTitle": "Update Available",
+    "updateAvailableMessage": "Version {version} is available",
+    "updateAvailableDetail": "Download the update now? You can restart and install it after the download completes.",
+    "downloadNow": "Download Now",
+    "downloading": "Downloading update...",
+    "installNow": "Install Now",
+    "installLater": "Install Later",
+    "updateReadyTitle": "Update Downloaded",
+    "updateReadyMessage": "Version {version} has been downloaded",
+    "updateReadyDetail": "The update will be installed after the app restarts.",
+    "downloaded": "Update downloaded and ready to install"
+  },
   "setupNewAccount": {
     "loadingText": "Setting up new account...",
     "addSuccess": "Authenticator added successfully",

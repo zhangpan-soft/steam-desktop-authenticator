@@ -110,6 +110,23 @@
     "loginWindowTitle": "{account} 需要重新登录",
     "loginSuccess": "{account} 登录状态已恢复"
   },
+  "updater": {
+    "checking": "正在检查更新...",
+    "noUpdate": "当前已是最新版本",
+    "notPackaged": "开发模式下不能检查更新",
+    "checkFailed": "检查更新失败。{message}",
+    "updateAvailableTitle": "发现新版本",
+    "updateAvailableMessage": "发现新版本 {version}",
+    "updateAvailableDetail": "是否现在下载更新？下载完成后可立即重启安装。",
+    "downloadNow": "立即下载",
+    "downloading": "正在下载更新...",
+    "installNow": "立即安装",
+    "installLater": "稍后安装",
+    "updateReadyTitle": "更新已下载",
+    "updateReadyMessage": "新版本 {version} 已下载完成",
+    "updateReadyDetail": "重启应用后将安装更新。",
+    "downloaded": "更新已下载，准备安装"
+  },
   "setupNewAccount": {
     "loadingText": "正在设置新账户...",
     "addSuccess": "验证器添加成功",

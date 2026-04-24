@@ -51,3 +51,6 @@ jobs:
             release/*/*.AppImage
             release/*/*.deb
             release/*/*.tar.gz
+            release/*/latest*.yml
+            release/*/*.blockmap
+            release/*/*.zsync

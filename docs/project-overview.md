@@ -87,6 +87,8 @@ steam-desktop-authenticator/
   - Current routes:
     - `/` -> home
     - `/steam/confirmations` -> confirmations window
+    - `/steam/cs2-inventory` -> native CS2 inventory window
+    - `/steam/login` -> child-window Steam relogin page
 
 ### Main renderer view
 
@@ -117,7 +119,13 @@ steam-desktop-authenticator/
 - `electron/window-manager.ts`
   - Creates main window and child windows
   - Handles background polling
+  - Performs account health checks before confirmation polling
   - Shows desktop notifications
+
+- `electron/updater.ts`
+  - Initializes `electron-updater`
+  - Checks GitHub Releases for updates
+  - Prompts before downloading and before restarting to install
   - Opens confirmations child windows
   - Synchronizes paint index cache in background
 
@@ -333,6 +341,7 @@ The following features are currently implemented in code.
 - Electron Builder packaging for Linux
 - GitHub Actions workflow for tagged release builds
 - Draft GitHub release upload on tag push
+- Runtime update checks via GitHub Releases and `latest*.yml` metadata
 
 ## 7. Hidden or Partially Exposed Capabilities
 
@@ -366,10 +375,8 @@ This is currently used only by the inventory model fallback logic and not expose
 
 These are useful to remember so later reviews do not assume they already exist.
 
-- Home page shows a "Check for updates" text, but there is no real updater / auto-update implementation in the codebase.
 - `tests/` is not a real automated test suite right now.
   - Current contents are sample/debug files.
-- There is localization text for inventory/CS2 inventory, but there is no native inventory page wired into the app.
 
 ## 9. Important Persistent Files
 
@@ -402,7 +409,7 @@ The app relies on a few important local files:
 
 - `.github/workflows/release.yml`
   - builds tagged releases on macOS, Windows, Linux
-  - uploads release assets as draft release files
+  - uploads release assets, updater metadata, and blockmaps as draft release files
 
 ## 11. Current Practical Mental Model
 
@@ -422,8 +429,8 @@ Current project status can be summarized as:
 - Multi-account local desktop usage is implemented
 - Import + encryption + login + token + confirmations are implemented
 - Background notification and auto-confirm behavior is implemented
-- Inventory domain logic exists partially in backend code, but app-native inventory UI is not connected
-- Auto-update is not implemented
+- Native CS2 inventory UI is implemented
+- Auto-update checking is implemented through GitHub Releases
 - Automated tests are not implemented
 
 ## 13. Suggested Maintenance Rule

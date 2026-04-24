@@ -40,6 +40,9 @@ type ElectronMessageChannel =
     | 'context:set'
     | 'steam:message:login-success-from-window'
     | 'steam:account-health-changed'
+    | 'update:check'
+    | 'update:install'
+    | 'update:status-changed'
     | SteamMessageChannel
 
 type SteamMessageChannel =
@@ -75,6 +78,20 @@ interface AccountHealthResult {
     healthy: boolean
     reason?: string
     checked_at: number
+}
+
+type UpdateStatusType = 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error' | 'unsupported'
+
+interface UpdateStatus {
+    status: UpdateStatusType
+    version?: string
+    releaseDate?: string
+    percent?: number
+    transferred?: number
+    total?: number
+    manual?: boolean
+    message?: string
+    error?: string
 }
 
 type SteamLoginType = 'NewAccount' | 'ImportSda' | 'RefreshToken' | 'ReLogin'

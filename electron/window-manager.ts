@@ -11,6 +11,7 @@ import zhLocale from '../src/i18n/locales/zh.json'
 import {openSteamCommunityWindow} from "./utils/steam-browser.ts";
 import {GotHttpApiRequest} from "./utils/requests.ts";
 import runtimeContext from "./utils/runtime-context.ts";
+import {initUpdater} from "./updater.ts";
 
 createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -330,6 +331,10 @@ app.on('activate', () => {
 
 app.whenReady().then(() => {
     windowManager.init() // 在 ready 后初始化
+    initUpdater({
+        getMainWindow: () => windowManager.getWindow('/'),
+        sendEvent: (channel, ...args) => windowManager.sendEvent('/', channel, ...args)
+    })
 
     // 使用递归 setTimeout 替代 setInterval，防止网络阻塞导致的请求堆积，并支持动态间隔
     const periodicCheck = async () => {

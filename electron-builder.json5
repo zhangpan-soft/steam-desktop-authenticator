@@ -34,7 +34,7 @@
         ]
       }
     ],
-    "artifactName": "${productName}-Mac-${arch}-${version}.${ext}",
+    "artifactName": "Steam-Desktop-Authenticator-Mac-${arch}-${version}.${ext}",
     "icon": "build/icons/icon.icns",
     "identity": null
   },
@@ -57,7 +57,7 @@
         ]
       }
     ],
-    "artifactName": "${productName}-Windows-${arch}-${version}.${ext}",
+    "artifactName": "Steam-Desktop-Authenticator-Windows-${arch}-${version}.${ext}",
     "icon": "build/icons/icon.ico"
   },
   "nsis": {
@@ -81,7 +81,7 @@
         "arch": ["x64", "arm64"]
       }
     ],
-    "artifactName": "${productName}-Linux-${arch}-${version}.${ext}",
+    "artifactName": "Steam-Desktop-Authenticator-Linux-${arch}-${version}.${ext}",
     "icon": "build/icons"
   }
 }
