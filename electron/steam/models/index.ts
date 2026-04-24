@@ -34,6 +34,7 @@ import * as SteamTotp from "steam-totp";
 import path from "node:path";
 import runtimeContext from "../../utils/runtime-context.ts";
 import windowManager from "../../window-manager.ts";
+import {safeErrorMessage, toSafeError} from "../../utils/safe-log.ts";
 
 class SteamMobileDeviceModel {
     deviceId?: string
@@ -422,12 +423,12 @@ class SteamSessionModel implements SteamSession{
                 }
             });
         } catch (e: any) {
-            console.error(`[SteamExecutor] Login Error for ${this.account_name}:`, e);
+            console.error(`[SteamExecutor] Login Error for ${this.account_name}:`, toSafeError(e));
             const evt: SteamLoginEvent = {
                 account_name: this.account_name,
                 result: e.eresult || EResult.Fail,
                 status: 'Failed',
-                error_message: e.message
+                error_message: safeErrorMessage(e)
             }
             this._sendEvent(evt)
             return evt
@@ -468,12 +469,12 @@ class SteamSessionModel implements SteamSession{
                 result: EResult.OK
             })
         }).catch((e: any) => {
-            console.error(`[SteamExecutor] 2FA Error for ${this.account_name}:`, e);
+            console.error(`[SteamExecutor] 2FA Error for ${this.account_name}:`, toSafeError(e));
             this._sendEvent({
                 account_name: this.account_name || 'unknown',
                 result: EResult.InvalidPassword,
                 status: 'Failed',
-                error_message: e.message
+                error_message: safeErrorMessage(e)
             })
         })
     }
@@ -482,7 +483,7 @@ class SteamSessionModel implements SteamSession{
         try {
             this._onSessionUpdated?.()
         } catch (e) {
-            console.error(`[${this.account_name}] Failed to persist session:`, e)
+            console.error(`[${this.account_name}] Failed to persist session:`, toSafeError(e))
         }
     }
 

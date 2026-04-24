@@ -129,13 +129,19 @@ const getInventoryErrorMessage = (error?: string, message?: string) => {
   if (error === 'sessionExpired') {
     return t('cs2Inventory.sessionExpired')
   }
-  return message || t('errors.unknown')
+  return getRemoteErrorMessage(message)
 }
 
 const getRemoteErrorMessage = (e: any) => {
-  const message = e?.message || ''
+  const message = typeof e === 'string' ? e : e?.message || ''
   if (message.includes('Session expired')) {
     return t('cs2Inventory.sessionExpired')
+  }
+  if (message.includes('Timeout') || message.includes('timed out') || message.includes('ETIMEDOUT')) {
+    return t('cs2Inventory.requestTimeout')
+  }
+  if (message.includes('ECONNRESET') || message.includes('ENOTFOUND') || message.includes('EAI_AGAIN') || message.includes('socket hang up')) {
+    return t('cs2Inventory.networkError')
   }
   return message || t('errors.unknown')
 }
