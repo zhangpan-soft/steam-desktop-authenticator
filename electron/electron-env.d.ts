@@ -30,6 +30,7 @@ type ElectronMessageChannel =
     | 'store:main-update'
     | 'main-process-message'
     | 'importMaFile'
+    | 'exportMaFiles'
     | 'open-window'
     | 'close-window'
     | 'settings:get'

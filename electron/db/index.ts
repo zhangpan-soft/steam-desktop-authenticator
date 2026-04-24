@@ -65,6 +65,11 @@ class SteamAccountDb {
         this.data = this.db.data
     }
 
+    static writeFile(filepath: string, data: SteamAccount, passkey?: string) {
+        const adapter = new SteamAccountAdapter(filepath, passkey)
+        adapter.write(data)
+    }
+
     update() {
         this.db.data = {...this.db.data, ...this.data}
         this.db.write()

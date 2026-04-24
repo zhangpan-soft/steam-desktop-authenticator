@@ -2,6 +2,7 @@
   "header": {
     "file": "File",
     "importAccount": "Import Account",
+    "exportAccounts": "Export Accounts",
     "settings": "Settings",
     "language": "Language",
     "exit": "Exit",
@@ -44,6 +45,29 @@
     "importFailed": "Import Failed",
     "userCanceled": "You canceled",
     "noFileSelected": "No file paths found."
+  },
+  "export": {
+    "title": "Export Accounts",
+    "scopeLabel": "Export Scope",
+    "scopeCurrent": "Current Account",
+    "scopeAll": "All Accounts",
+    "modeLabel": "Export Mode",
+    "modePlain": "Plaintext",
+    "modeEncrypted": "Encrypted",
+    "passkeyLabel": "Temporary Export Passkey",
+    "passkeyPlaceholder": "Enter a new passkey for exported files",
+    "targetLabel": "Export Folder",
+    "targetPlaceholder": "Select an export folder",
+    "selectFolder": "Select Folder",
+    "currentAccountRequired": "Please select an account first",
+    "targetRequired": "Please select an export folder",
+    "targetIsSource": "Cannot export to the current SDA maFiles folder",
+    "sdaPasskeyRequired": "SDA is encrypted. Unlock it before exporting",
+    "passkeyRequired": "Please enter a temporary export passkey",
+    "noAccounts": "No accounts to export",
+    "success": "Exported {count} account(s)",
+    "partialSuccess": "Exported {count} account(s), {failed} failed",
+    "failed": "Export failed. {message}"
   },
   "initializing": {
     "title": "Initializing",

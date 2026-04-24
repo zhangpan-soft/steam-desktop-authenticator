@@ -2,6 +2,7 @@
 
 import {reactive, ref} from "vue";
 import ImportAccount from "./ImportAccount.vue";
+import ExportAccounts from "./ExportAccounts.vue";
 import Settings from "./Settings.vue";
 import {ElMessage} from "element-plus";
 import SteamLogin from "./SteamLogin.vue";
@@ -15,11 +16,13 @@ const props = withDefaults(defineProps<{
 const currentData = reactive<{
   settingsModel: boolean
   importAccountModel: boolean
+  exportAccountModel: boolean
   loginModelShow: boolean
   steamLoginRef: any
 }>({
   settingsModel: false,
   importAccountModel: false,
+  exportAccountModel: false,
   loginModelShow: false,
   steamLoginRef: ref<InstanceType<typeof SteamLogin>>()
 })
@@ -32,6 +35,10 @@ const handleSettings = () => {
 
 const handleImportAccount = () => {
   currentData.importAccountModel = true
+}
+
+const handleExportAccounts = () => {
+  currentData.exportAccountModel = true
 }
 
 const handleExit = async () => {
@@ -182,6 +189,9 @@ const switchLanguage = async (lang: 'en' | 'zh') => {
             <el-dropdown-item @click="handleImportAccount">
               {{ t('header.importAccount') }}
             </el-dropdown-item>
+            <el-dropdown-item @click="handleExportAccounts">
+              {{ t('header.exportAccounts') }}
+            </el-dropdown-item>
             <el-dropdown-item @click="handleSettings">{{ t('header.settings') }}</el-dropdown-item>
             <el-dropdown-item divided>
               <el-dropdown placement="right-start" class="language-dropdown" size="small">
@@ -222,6 +232,11 @@ const switchLanguage = async (lang: 'en' | 'zh') => {
   </el-row>
 
   <ImportAccount v-if="currentData.importAccountModel" v-model:show="currentData.importAccountModel"/>
+  <ExportAccounts
+      v-if="currentData.exportAccountModel"
+      v-model:show="currentData.exportAccountModel"
+      :account_name="props.account_name"
+  />
   <Settings v-if="currentData.settingsModel" v-model:show="currentData.settingsModel"/>
   <SteamLogin
       v-if="currentData.loginModelShow"

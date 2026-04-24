@@ -57,6 +57,63 @@ ipcMainHandler
             return readMaFile(args.path)
         }
     })
+    .handle('exportMaFiles', async (event, args) => {
+        const rawTargetDir = String(args.targetDir || '').trim()
+        if (!rawTargetDir) {
+            throw new Error('exportTargetRequired')
+        }
+        const targetDir = path.resolve(rawTargetDir)
+        const sourceDir = path.resolve(settingsDb.data.maFilesDir)
+        if (targetDir === sourceDir) {
+            throw new Error('exportTargetIsSource')
+        }
+        if (settingsDb.data.encrypted && !runtimeContext.passkey) {
+            throw new Error('sdaPasskeyRequired')
+        }
+        const encrypted = Boolean(args.encrypted)
+        const exportPasskey = encrypted ? String(args.passkey || '').trim() : undefined
+        if (encrypted && !exportPasskey) {
+            throw new Error('exportPasskeyRequired')
+        }
+
+        const entries = args.scope === 'current'
+            ? settingsDb.data.entries.filter(entry => entry.account_name === args.account_name)
+            : settingsDb.data.entries
+
+        if (entries.length === 0) {
+            throw new Error('exportNoAccounts')
+        }
+
+        await fs.mkdir(targetDir, {recursive: true})
+
+        const files: { account_name: string, filepath: string }[] = []
+        const failed: { account_name: string, message: string }[] = []
+
+        for (const entry of entries) {
+            try {
+                const sourcePath = path.join(settingsDb.data.maFilesDir, `${entry.account_name}.maFile`)
+                const accountDb = new SteamAccountDb(sourcePath, runtimeContext.passkey)
+                const filename = `${entry.account_name.replace(/[\\/:*?"<>|]/g, '_')}.maFile`
+                const filepath = path.join(targetDir, filename)
+                SteamAccountDb.writeFile(filepath, accountDb.data, exportPasskey)
+                files.push({
+                    account_name: entry.account_name,
+                    filepath
+                })
+            } catch (e: any) {
+                failed.push({
+                    account_name: entry.account_name,
+                    message: e?.message || String(e)
+                })
+            }
+        }
+
+        return {
+            count: files.length,
+            files,
+            failed
+        }
+    })
     .handle('open-window', async (event, args) => {
         const {uri, options} = {...args}
         if (!options.parent) {

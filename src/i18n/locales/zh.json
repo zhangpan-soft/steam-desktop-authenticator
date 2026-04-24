@@ -2,6 +2,7 @@
   "header": {
     "file": "文件",
     "importAccount": "导入账户",
+    "exportAccounts": "导出账户",
     "settings": "设置",
     "language": "语言",
     "exit": "退出",
@@ -44,6 +45,29 @@
     "importFailed": "导入失败",
     "userCanceled": "您已取消操作",
     "noFileSelected": "未找到文件路径。"
+  },
+  "export": {
+    "title": "导出账户",
+    "scopeLabel": "导出范围",
+    "scopeCurrent": "当前账户",
+    "scopeAll": "全部账户",
+    "modeLabel": "导出方式",
+    "modePlain": "明文导出",
+    "modeEncrypted": "加密导出",
+    "passkeyLabel": "导出文件临时密码",
+    "passkeyPlaceholder": "请输入用于导出文件的新密码",
+    "targetLabel": "导出文件夹",
+    "targetPlaceholder": "请选择导出文件夹",
+    "selectFolder": "选择文件夹",
+    "currentAccountRequired": "请先选择一个账户",
+    "targetRequired": "请选择导出文件夹",
+    "targetIsSource": "不能导出到当前 SDA maFiles 文件夹",
+    "sdaPasskeyRequired": "当前 SDA 已加密，请先解锁后再导出",
+    "passkeyRequired": "请输入导出文件临时密码",
+    "noAccounts": "没有可导出的账户",
+    "success": "已成功导出 {count} 个账户",
+    "partialSuccess": "已导出 {count} 个账户，{failed} 个账户失败",
+    "failed": "导出失败。{message}"
   },
   "initializing": {
     "title": "初始化",
