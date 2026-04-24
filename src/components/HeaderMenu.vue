@@ -49,6 +49,66 @@ const handleNotifications = async () => {
   }
   await window.ipcRenderer.invoke('steam:open-notifications', { account_name: props.account_name })
 }
+
+const handleInventory = async ()=>{
+  if (!props.account_name) {
+    ElMessage.warning({
+      message: t('home.noAccountSelected'),
+      grouping: true,
+      showClose: true,
+      duration: 3000
+    })
+    return
+  }
+  await window.ipcRenderer.invoke('steam:open-community-window', { account_name: props.account_name, url: 'https://steamcommunity.com/profiles/%s%/inventory'})
+}
+
+const handleCs2Inventory = async () => {
+  if (!props.account_name) {
+    ElMessage.warning({
+      message: t('home.noAccountSelected'),
+      grouping: true,
+      showClose: true,
+      duration: 3000
+    })
+    return
+  }
+  await window.ipcRenderer.invoke('open-window', {
+    uri: {
+      hash: '/steam/cs2-inventory',
+      query: {
+        account_name: props.account_name
+      }
+    },
+    options: {
+      width: 1100,
+      height: 800,
+      minWidth: 960,
+      minHeight: 720,
+      useContentSize: true,
+      resizable: true,
+      maximizable: true,
+      minimizable: true,
+      show: false,
+      icon: 'icon.png',
+      title: t('cs2Inventory.title')
+    }
+  })
+}
+
+const handleTrade = async ()=>{
+  if (!props.account_name) {
+    ElMessage.warning({
+      message: t('home.noAccountSelected'),
+      grouping: true,
+      showClose: true,
+      duration: 3000
+    })
+    return
+  }
+  await window.ipcRenderer.invoke('steam:open-community-window', { account_name: props.account_name, url: 'https://steamcommunity.com/profiles/%s%/tradeoffers/'})
+}
+
 const handleLoginAgain = async ()=>{
   if (!props.account_name){
     ElMessage.warning({
@@ -62,10 +122,8 @@ const handleLoginAgain = async ()=>{
   currentData.loginModelShow = true
 }
 const handleLoginSuccess = async (session:SteamSession)=>{
-  console.log(session)
 }
 const handleLoginFailed = async (err:any)=>{
-  console.log(err)
   ElMessage.error(err.message)
 }
 const handleForceRefresh = async ()=>{
@@ -95,14 +153,15 @@ const handleRemove = async ()=>{
     })
     return
   }
-  await window.ipcRenderer.invoke('settings:get',)
-      .then((settings)=>{
-        const index = settings.entries.findIndex((entry:any) => entry.account_name === props.account_name)
-        if (index!==-1){
-          settings.entries.splice(index,1)
-          return window.ipcRenderer.invoke('settings:set', settings)
-        }
-      })
+  const settings = await window.ipcRenderer.invoke('settings:get')
+  const index = settings.entries.findIndex((entry:any) => entry.account_name === props.account_name)
+  if (index!==-1){
+    settings.entries.splice(index,1)
+    await window.ipcRenderer.invoke('settings:set', settings)
+    await window.ipcRenderer.invoke('context:set', {
+      selectedAccount: settings.entries[0] || null
+    })
+  }
 }
 
 const switchLanguage = async (lang: 'en' | 'zh') => {
@@ -132,8 +191,8 @@ const switchLanguage = async (lang: 'en' | 'zh') => {
                  </span>
                 <template #dropdown>
                   <el-dropdown-menu>
-                    <el-dropdown-item @click="switchLanguage('en')">English</el-dropdown-item>
-                    <el-dropdown-item @click="switchLanguage('zh')">中文</el-dropdown-item>
+                    <el-dropdown-item @click="switchLanguage('en')">{{t('header.en')}}</el-dropdown-item>
+                    <el-dropdown-item @click="switchLanguage('zh')">{{t('header.zh')}}</el-dropdown-item>
                   </el-dropdown-menu>
                 </template>
               </el-dropdown>
@@ -148,6 +207,9 @@ const switchLanguage = async (lang: 'en' | 'zh') => {
         <template #dropdown>
           <el-dropdown-menu>
             <el-dropdown-item @click="handleNotifications">{{ t('header.notifications') }}</el-dropdown-item>
+            <el-dropdown-item @click="handleInventory">{{ t('header.inventory') }}</el-dropdown-item>
+            <el-dropdown-item @click="handleCs2Inventory">{{ t('header.cs2Inventory') }}</el-dropdown-item>
+            <el-dropdown-item @click="handleTrade">{{ t('header.trade') }}</el-dropdown-item>
             <el-dropdown-item @click="handleLoginAgain">{{ t('header.loginAgain') }}</el-dropdown-item>
             <el-dropdown-item @click="handleForceRefresh">{{ t('header.forceRefresh') }}</el-dropdown-item>
             <el-dropdown-item divided @click="handleRemove">{{ t('header.remove') }}</el-dropdown-item>

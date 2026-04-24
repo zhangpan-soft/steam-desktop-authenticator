@@ -8,8 +8,9 @@ import {DEFAULT_LANGUAGE} from "./steam/constants.ts";
 import {EResult} from "steam-session";
 import enLocale from '../src/i18n/locales/en.json'
 import zhLocale from '../src/i18n/locales/zh.json'
-import {openSteamNotificationsWindow} from "./utils/steam-browser.ts";
+import {openSteamCommunityWindow} from "./utils/steam-browser.ts";
 import {GotHttpApiRequest} from "./utils/requests.ts";
+import runtimeContext from "./utils/runtime-context.ts";
 
 createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -239,12 +240,15 @@ app.whenReady().then(() => {
         try {
             if (settingsDb.data.entries && settingsDb.data.entries.length > 0) {
                 const isCheckingEnabled = settingsDb.data.periodic_checking ||
-                                          settingsDb.data.periodic_checking_checkall ||
                                           settingsDb.data.auto_confirm_trades ||
                                           settingsDb.data.auto_confirm_market_transactions;
 
                 if (isCheckingEnabled) {
-                    for (let entry of settingsDb.data.entries) {
+                    const entriesToCheck = settingsDb.data.periodic_checking_checkall
+                        ? settingsDb.data.entries
+                        : settingsDb.data.entries.filter(entry => entry.account_name === runtimeContext.selectedAccount?.account_name)
+
+                    for (let entry of entriesToCheck) {
                         await checkAccountConfirmations(entry)
                     }
                 }
@@ -270,7 +274,7 @@ app.whenReady().then(() => {
             await GotHttpApiRequest.get('https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/skins.json')
                 .param()
                 .requestConfig({
-                    timeout: settingsDb.data.timeout,
+                    timeout: 30000,
                     proxies: settingsDb.data.proxy
                 })
                 .perform()
@@ -383,7 +387,10 @@ async function checkAccountConfirmations(entry: EntryType) {
         })
 
         n.on('click', async () => {
-            await openSteamNotificationsWindow(entry.account_name, model.session)
+            if (!await model.session.checkSession()) {
+                return
+            }
+            await openSteamCommunityWindow(`https://steamcommunity.com/profiles/${model.session.SteamID}/notifications`, model.session.account_name)
         })
 
         n.show()

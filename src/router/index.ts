@@ -12,6 +12,11 @@ const router = createRouter({
       path: '/steam/confirmations',
       name: 'confirmations',
       component: import('../views/steam/Confirmations.vue'),
+    },
+    {
+      path: '/steam/cs2-inventory',
+      name: 'cs2-inventory',
+      component: import('../views/steam/Cs2Inventory.vue'),
     }
   ]
 })

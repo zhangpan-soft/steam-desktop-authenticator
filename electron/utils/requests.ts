@@ -1,7 +1,6 @@
 import got, {Response, Method, OptionsInit} from 'got';
 import { HttpProxyAgent, HttpsProxyAgent } from 'hpagent';
 import {SocksProxyAgent} from "socks-proxy-agent";
-import * as querystring from "node:querystring";
 import {fromJson} from "./json-util.ts"; // 用于处理代理
 
 // ---------------------------------------------------------
@@ -365,10 +364,8 @@ export class GotHttpApiRequest implements IHttpUri, IHttpBody, IHttpParam, IHttp
 
         // 6. 发送请求
         try {
-            console.log('gotRequest', this._url, querystring)
             const response = await got(this._url, options);
             const _ = new GotHttpResponse(response as Response<string>);
-            console.log('gotResponse',_.getCode(),_.getHeaders(),_.getCookies(),_.getRequestUrls(),_.getText())
             return _
         } catch (error: any) {
             console.error('Got Request Error:', error);

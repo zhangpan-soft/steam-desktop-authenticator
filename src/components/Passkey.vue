@@ -25,9 +25,14 @@ const currentData = reactive<{
 
 const events = {
   async handleConfirm() {
+    const passkey = currentData.passkey.trim()
+    if (!passkey) {
+      ElMessage.warning(t('passkey.emptyError'))
+      return
+    }
     currentData.loading = true
     try {
-      await window.ipcRenderer.invoke('context:set', {passkey: currentData.passkey})
+      await window.ipcRenderer.invoke('context:set', {passkey})
       show.value = false
     } catch (e: any) {
       ElMessage.error(e.message)

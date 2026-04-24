@@ -54,6 +54,7 @@ const events = {
         shared_secret: props.shared_secret
       })
     } catch (e: any) {
+      console.error(e)
       if (e?.message) ElMessage.error(e.message)
       currentData.loading = false
     }
@@ -95,18 +96,21 @@ const events = {
         break
 
       case 'Need2FA':
-        const steamAccount:SteamAccount = await window.ipcRenderer.invoke('steam:account:get')
+        const steamAccount:SteamAccount = await window.ipcRenderer.invoke('steam:account:get', {
+          account_name: currentData.loginForm.account_name
+        })
         if (!steamAccount.guard?.shared_secret){
           if (props.shared_secret) {
             ElMessage.error(t('steamLogin.loginFailed'))
             currentData.loading = false
             return
           }
-          await this.handle2FAPrompt()
+          await events.handle2FAPrompt()
         } else {
-          await window.ipcRenderer.invoke('steam:token', {account_name: steamAccount.session?.account_name})
+          const accountName = steamAccount.session?.account_name || currentData.loginForm.account_name
+          await window.ipcRenderer.invoke('steam:token', {account_name: accountName})
               .then((res)=>{
-                return window.ipcRenderer.invoke('steam:submitSteamGuard',{account_name: steamAccount.session?.account_name, steamGuardCode: res.token})
+                return window.ipcRenderer.invoke('steam:submitSteamGuard',{account_name: accountName, steamGuardCode: res.token})
               })
         }
         break

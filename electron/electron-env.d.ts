@@ -51,10 +51,12 @@ type SteamMessageChannel =
     | 'steam:generateCode'
     | 'steam:account:get'
     | 'steam:confirmations:respond'
+    | 'steam:getCs2Inventory'
     | 'steam:addAuthenticator'
     | 'steam:open-notifications'
+    | 'steam:open-community-window'
 
-type WindowHashType = '/' | '/steam/confirmations' | '/steam/login' | '/steam/confirmation'
+type WindowHashType = '/' | '/steam/confirmations' | '/steam/login' | '/steam/confirmation' | '/steam/cs2-inventory'
 
 type WindowUri = {
     hash: WindowHashType
@@ -210,6 +212,7 @@ interface Settings {
 
 interface RuntimeContext {
     passkey?: string
+    selectedAccount?: EntryType
 }
 
 interface SteamAccount{
@@ -242,7 +245,6 @@ interface SteamLoginEvent {
 }
 
 interface LoginOptions {
-    account_name: string
     password?: string
     steamGuardCode?: string
     refresh_token?: string
@@ -512,5 +514,5 @@ interface InventoryItem{
     paint_seed?: string
     paint_index?: string
     templateIndex?: string
-    stickerFloatValues: string[]
+    stickerFloatValues?: string[]
 }

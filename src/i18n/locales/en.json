@@ -9,7 +9,12 @@
     "loginAgain": "Login again",
     "forceRefresh": "Force refresh",
     "remove": "Remove",
-    "notifications": "Notifications"
+    "notifications": "Notifications",
+    "en": "English",
+    "zh": "Chinese",
+    "inventory": "Inventory",
+    "trade": "Trade",
+    "cs2Inventory": "CS2 Inventory"
   },
   "home": {
     "setupNewAccount": "Setup New Account",
@@ -50,7 +55,8 @@
   },
   "passkey": {
     "title": "Passkey",
-    "placeholder": "Please Input SDA Passkey"
+    "placeholder": "Please Input SDA Passkey",
+    "emptyError": "Passkey is required"
   },
   "settings": {
     "title": "Settings",
@@ -95,6 +101,9 @@
     "detailsTitle": "Confirmation Details",
     "noConfirmations": "No Confirmations",
     "failedToGet": "Failed to get confirmations.{message}",
+    "sessionExpired": "Session expired. Please sign in again or force refresh the session",
+    "requestTimeout": "Request timed out. Please check your network or proxy settings",
+    "noGuard": "This account has no available Steam Guard data",
     "type": "Type",
     "time": "Time",
     "id": "ID",
@@ -118,6 +127,35 @@
     "noInventory": "No Inventory",
     "loading": "Loading...",
     "noMore": "No more items"
+  },
+  "cs2Inventory": {
+    "title": "CS2 Inventory",
+    "detailsTitle": "Item Details",
+    "searchPlaceholder": "Search by item, type, paint index, or float",
+    "refresh": "Refresh",
+    "failedToGet": "Failed to get CS2 inventory. {message}",
+    "sessionExpired": "Session expired. Please sign in again or refresh the session",
+    "noInventory": "This account has no CS2 inventory items",
+    "noResults": "No matching items",
+    "totalItems": "Items: {count}",
+    "marketableItems": "Marketable: {count}",
+    "tradableItems": "Tradable: {count}",
+    "marketable": "Marketable",
+    "notMarketable": "Not Marketable",
+    "tradable": "Tradable",
+    "notTradable": "Not Tradable",
+    "cooldownUntil": "Cooldown Until",
+    "amount": "Amount",
+    "assetId": "Asset ID",
+    "marketName": "Market Name",
+    "marketHashName": "Market Hash Name",
+    "float": "Float",
+    "paintIndex": "Paint Index",
+    "paintSeed": "Paint Seed",
+    "templateIndex": "Template Index",
+    "stickerWear": "Sticker Wear",
+    "ownerDescriptions": "Owner Notes",
+    "descriptions": "Descriptions"
   },
   "errors": {
     "unknown": "Unknown Error"

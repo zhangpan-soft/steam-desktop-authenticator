@@ -379,6 +379,22 @@ const addAuthenticator = async (args: any) => {
       })
     }
     case "Success": {
+      if (currentData.session?.account_name && currentData.session?.SteamID) {
+        const settings: Settings = await window.ipcRenderer.invoke('settings:get')
+        if (settings.entries.findIndex(value => value.account_name === currentData.session?.account_name && value.steamid === currentData.session?.SteamID) < 0) {
+          settings.entries.push({
+            account_name: currentData.session.account_name,
+            steamid: currentData.session.SteamID,
+          })
+        }
+        await window.ipcRenderer.invoke('settings:set', settings)
+        await window.ipcRenderer.invoke('context:set', {
+          selectedAccount: {
+            account_name: currentData.session.account_name,
+            steamid: currentData.session.SteamID,
+          }
+        })
+      }
       ElMessage.success(t('setupNewAccount.addSuccess'))
       return
     }

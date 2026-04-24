@@ -114,7 +114,6 @@ export async function readMaFile(maFilePath: string, options?:{passkey?: string,
         }
     } else {
         const data = await fs.readFile(maFilePath, 'utf8')
-        console.log('=================', data)
         const _data = fromJson<any>(data)
         return {
             account_name: _data.account_name,

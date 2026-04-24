@@ -8,6 +8,14 @@ export default defineConfig(({ mode }) => {
     const isProd = mode === 'production'
     // ✅ 修复：显式指定类型为 ESBuildOptions，让 TS 正确推断 drop 的字面量类型
     const esbuild: ESBuildOptions | undefined = isProd ? { drop: ['console', 'debugger'] } : undefined
+    const rendererManualChunks = (id: string) => {
+        if (!id.includes('node_modules')) return undefined
+        if (id.includes('@element-plus/icons-vue')) return 'element-plus-icons'
+        if (id.includes('element-plus')) return 'element-plus'
+        if (id.includes('vue-router')) return 'vue-router'
+        if (id.includes('vue-i18n')) return 'vue-i18n'
+        return 'vendor'
+    }
 
     return {
     plugins: [
@@ -49,6 +57,13 @@ export default defineConfig(({ mode }) => {
                 : {},
         }),
     ],
+    build: {
+        rollupOptions: {
+            output: {
+                manualChunks: rendererManualChunks,
+            },
+        },
+    },
     esbuild,
     }
 })

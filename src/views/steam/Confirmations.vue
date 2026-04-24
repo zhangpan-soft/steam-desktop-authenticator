@@ -27,6 +27,26 @@ const data = reactive<{
 const route = useRoute()
 const { t } = useI18n()
 
+const getFailureMessage = (res?: SteamResponse<ConfirmationsResponse>) => {
+  if (!res) {
+    return t('errors.unknown')
+  }
+  if (res.eresult === EResult.Timeout) {
+    return t('confirmations.requestTimeout')
+  }
+  switch (res.message) {
+    case 'missingRefreshToken':
+    case 'refreshTokenExpired':
+    case 'sessionRefreshFailed':
+    case 'sessionExpired':
+      return t('confirmations.sessionExpired')
+    case 'noGuard':
+      return t('confirmations.noGuard')
+    default:
+      return res.message || t('errors.unknown')
+  }
+}
+
 const fetchConfirmations = async () => {
   data.loading = true
   const account_name = route.query.account_name
@@ -38,7 +58,7 @@ const fetchConfirmations = async () => {
         selected: false
       }))
     } else {
-      ElMessage.error(t('confirmations.failedToGet', { message: res.message || '' }))
+      ElMessage.error(t('confirmations.failedToGet', { message: getFailureMessage(res) }))
     }
   }catch (err: any) {
     ElMessage.error(t('confirmations.failedToGet', { message: err.message || err || '' }))

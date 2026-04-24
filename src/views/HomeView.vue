@@ -29,12 +29,25 @@ const currentData = reactive<CurrentDataType>({
 })
 
 const selectAccount = async (acc: EntryType) => {
-  console.log('=============', acc);
-  currentData.account = {...acc}
+  const selectedAccount = {
+    account_name: acc.account_name,
+    steamid: acc.steamid,
+  }
+  currentData.account = {...selectedAccount}
+  await window.ipcRenderer.invoke('context:set', {selectedAccount})
 }
 
 onMounted(async () => {
   const settings: Settings = await window.ipcRenderer.invoke('settings:get',)
+  const context: RuntimeContext = await window.ipcRenderer.invoke('context:get')
+  if (context.selectedAccount) {
+    const selectedAccount = settings.entries.find(entry =>
+        entry.account_name === context.selectedAccount?.account_name &&
+        entry.steamid === context.selectedAccount?.steamid)
+    if (selectedAccount) {
+      currentData.account = {...selectedAccount}
+    }
+  }
   if (settings.first_run) {
     currentData.initializingModel = true
   } else {

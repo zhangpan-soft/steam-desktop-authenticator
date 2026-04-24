@@ -9,7 +9,12 @@
     "loginAgain": "重新登录",
     "forceRefresh": "强制刷新",
     "remove": "移除",
-    "notifications": "通知"
+    "notifications": "通知",
+    "en": "英语",
+    "zh": "中文",
+    "inventory": "库存",
+    "trade": "交易",
+    "cs2Inventory": "CS2库存"
   },
   "home": {
     "setupNewAccount": "设置新账户",
@@ -50,7 +55,8 @@
   },
   "passkey": {
     "title": "密钥",
-    "placeholder": "请输入SDA密钥"
+    "placeholder": "请输入SDA密钥",
+    "emptyError": "请输入密钥"
   },
   "settings": {
     "title": "设置",
@@ -95,6 +101,9 @@
     "detailsTitle": "确认详情",
     "noConfirmations": "没有待确认项",
     "failedToGet": "获取确认项失败。{message}",
+    "sessionExpired": "登录状态已过期，请重新登录或强制刷新会话",
+    "requestTimeout": "请求超时，请检查网络或代理设置",
+    "noGuard": "当前账户没有可用的 Steam Guard 数据",
     "type": "类型",
     "time": "时间",
     "id": "ID",
@@ -118,6 +127,35 @@
     "noInventory": "库存为空",
     "loading": "加载中...",
     "noMore": "没有更多物品了"
+  },
+  "cs2Inventory": {
+    "title": "CS2 库存",
+    "detailsTitle": "物品详情",
+    "searchPlaceholder": "搜索物品名、类型、皮肤编号或浮点",
+    "refresh": "刷新",
+    "failedToGet": "获取 CS2 库存失败。{message}",
+    "sessionExpired": "登录状态已过期，请重新登录或刷新会话",
+    "noInventory": "当前账户没有 CS2 库存物品",
+    "noResults": "没有匹配的物品",
+    "totalItems": "物品数: {count}",
+    "marketableItems": "可上架: {count}",
+    "tradableItems": "可交易: {count}",
+    "marketable": "可上架",
+    "notMarketable": "不可上架",
+    "tradable": "可交易",
+    "notTradable": "不可交易",
+    "cooldownUntil": "冷却至",
+    "amount": "数量",
+    "assetId": "资产 ID",
+    "marketName": "市场名称",
+    "marketHashName": "市场哈希名",
+    "float": "浮点",
+    "paintIndex": "皮肤编号",
+    "paintSeed": "图案模板",
+    "templateIndex": "模板索引",
+    "stickerWear": "贴纸磨损",
+    "ownerDescriptions": "账户说明",
+    "descriptions": "物品说明"
   },
   "errors": {
     "unknown": "未知错误"

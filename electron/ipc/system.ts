@@ -4,7 +4,7 @@ import path from "node:path";
 import {readMaFile} from "../ma-file.ts";
 import windowManager from "../window-manager.ts";
 import ipcMainHandler from "./index.ts";
-import {settingsDb} from "../db";
+import {settingsDb, SteamAccountDb} from "../db";
 import runtimeContext from "../utils/runtime-context.ts";
 import {getSteamModel} from "../steam/models";
 import {fromJson} from "../utils/json-util.ts";
@@ -48,7 +48,7 @@ ipcMainHandler
                 throw new Error('manifest.json entries is empty')
             }
             const maFileParse = path.parse(args.path)
-            const acc = manifest.entries.find((value: any) => value.filename === maFileParse.name + '.' + maFileParse.ext)
+            const acc = manifest.entries.find((value: any) => value.filename === maFileParse.base)
             if (!acc) {
                 throw new Error('manifest.json entries is empty')
             }
@@ -81,30 +81,38 @@ ipcMainHandler
         return {...runtimeContext}
     })
     .handle('context:set', async (event, args) => {
-        if (args.passkey) {
+        if (Object.prototype.hasOwnProperty.call(args, 'selectedAccount')) {
+            runtimeContext.selectedAccount = args.selectedAccount || undefined
+        }
+        if (Object.prototype.hasOwnProperty.call(args, 'passkey')) {
+            const passkey = typeof args.passkey === 'string' ? args.passkey.trim() : ''
+            if (!passkey) {
+                throw new Error('Passkey is required')
+            }
             if (!settingsDb.data.encrypted) { // 如果未加密
                 settingsDb.data.encrypted = true // 设置为加密
                 settingsDb.update() // 更新settings
                 settingsDb.data.entries.forEach((item) => {
                     // 按未加密读取数据
-                    getSteamModel(item.account_name).setPasskey(args.passkey)
+                    getSteamModel(item.account_name).setPasskey(passkey)
                     // 设置加密
                 })
             } else { // 如果已加密
                 if (!runtimeContext.passkey) { // 如果当前运行时还未设置密码
                     if (settingsDb.data.entries.length>0){
-                        // 获取一次已存在数据, 如果获取失败, 则说明密码不正确
-                        getSteamModel(settingsDb.data.entries[0].account_name, args.passkey)
+                        // 强制使用当前输入的密码读一次磁盘文件，失败则直接抛错
+                        const filepath = path.join(settingsDb.data.maFilesDir, `${settingsDb.data.entries[0].account_name}.maFile`)
+                        new SteamAccountDb(filepath, passkey)
                     }
                 } else { // 如果运行时已存在密码,证明是修改密码
                     settingsDb.data.entries.forEach((item) => {
                         // 使用老密码读取数据
-                        getSteamModel(item.account_name).setPasskey(args.passkey)
+                        getSteamModel(item.account_name).setPasskey(passkey)
                         // 设置新密码
                     })
                 }
             }
-            runtimeContext.passkey = args.passkey
+            runtimeContext.passkey = passkey
         }
         return true
     })

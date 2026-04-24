@@ -17,19 +17,20 @@ const emit = defineEmits<{
 }>()
 
 const selectAccount = async (acc: EntryType) => {
-  console.log('=============', acc);
-  currentData.account_name = acc.account_name
-  emit('selected', acc)
+  const selectedAccount = {
+    account_name: acc.account_name,
+    steamid: acc.steamid,
+  }
+  currentData.account_name = selectedAccount.account_name
+  emit('selected', selectedAccount)
 }
 const onSettingsUpdate = (event:any,args:Settings)=>{
-  console.log(event,args)
   currentData.entries = [...args.entries]
 }
 const filterList = computed(()=>{
   if (!currentData.filterText){
     return currentData.entries
   }
-  console.log(currentData.entries)
   return currentData.entries.filter(item=>item.account_name.includes(currentData.filterText) || String(item.steamid).includes(currentData.filterText))
 })
 onMounted(async () => {

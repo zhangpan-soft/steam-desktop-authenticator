@@ -30,7 +30,6 @@ const steamLoginRef = ref<InstanceType<typeof SteamLogin>>()
 const events = {
   async handleLoginSuccess(session: SteamSession){
     currentData.steamAccount = await window.ipcRenderer.invoke('steam:account:get', {...session})
-    console.log('------------', currentData.steamAccount)
     await window.ipcRenderer.invoke('settings:get',)
         .then((settings:Settings)=>{
           if (settings.entries.findIndex(value => value.account_name === session.account_name && value.steamid === session.SteamID)<0){
@@ -41,11 +40,16 @@ const events = {
           }
           return window.ipcRenderer.invoke('settings:set', settings)
         })
+    await window.ipcRenderer.invoke('context:set', {
+      selectedAccount: {
+        account_name: session.account_name,
+        steamid: session.SteamID,
+      }
+    })
     ElMessage.success(t('import.importSuccess'))
     show.value = false
   },
   handleLoginFailed(err: any){
-    console.log(err)
     ElMessage.error(t('import.importFailed'))
     show.value = false
     currentData.loginModelShow = false
