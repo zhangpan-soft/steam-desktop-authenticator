@@ -410,6 +410,10 @@ The app relies on a few important local files:
 - `.github/workflows/release.yml`
   - builds tagged releases on macOS, Windows, Linux
   - uploads release assets, updater metadata, and blockmaps as draft release files
+  - publishes the release after all platform builds finish, so auto-update clients can see it
+
+- `docs/release-smoke-test.md`
+  - manual smoke checklist for install, account flows, confirmations, inventory, export, update metadata, and sensitive-log sanity checks
 
 ## 11. Current Practical Mental Model
 
@@ -431,6 +435,7 @@ Current project status can be summarized as:
 - Background notification and auto-confirm behavior is implemented
 - Native CS2 inventory UI is implemented
 - Auto-update checking is implemented through GitHub Releases
+- Release smoke checklist exists for manual verification before or after publishing
 - Automated tests are not implemented
 
 ## 13. Suggested Maintenance Rule

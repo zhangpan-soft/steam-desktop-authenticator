@@ -42,9 +42,22 @@ const getFailureMessage = (res?: SteamResponse<ConfirmationsResponse>) => {
       return t('confirmations.sessionExpired')
     case 'noGuard':
       return t('confirmations.noGuard')
+    case 'networkError':
+      return t('confirmations.networkError')
     default:
-      return res.message || t('errors.unknown')
+      return getRemoteErrorMessage(res.message)
   }
+}
+
+const getRemoteErrorMessage = (message?: string) => {
+  const raw = message || ''
+  if (raw.includes('Timeout') || raw.includes('timed out') || raw.includes('ETIMEDOUT')) {
+    return t('confirmations.requestTimeout')
+  }
+  if (raw.includes('ECONNRESET') || raw.includes('ENOTFOUND') || raw.includes('EAI_AGAIN') || raw.includes('socket hang up')) {
+    return t('confirmations.networkError')
+  }
+  return raw || t('errors.unknown')
 }
 
 const fetchConfirmations = async () => {
@@ -61,7 +74,7 @@ const fetchConfirmations = async () => {
       ElMessage.error(t('confirmations.failedToGet', { message: getFailureMessage(res) }))
     }
   }catch (err: any) {
-    ElMessage.error(t('confirmations.failedToGet', { message: err.message || err || '' }))
+    ElMessage.error(t('confirmations.failedToGet', { message: getRemoteErrorMessage(err?.message || err) }))
   } finally {
     data.loading = false
   }

@@ -2,6 +2,7 @@ import got, {Response, Method, OptionsInit} from 'got';
 import { HttpProxyAgent, HttpsProxyAgent } from 'hpagent';
 import {SocksProxyAgent} from "socks-proxy-agent";
 import {fromJson} from "./json-util.ts"; // 用于处理代理
+import {toSafeError} from "./safe-log.ts";
 
 // ---------------------------------------------------------
 // 1. 响应体实现 (GotHttpResponse)
@@ -368,7 +369,7 @@ export class GotHttpApiRequest implements IHttpUri, IHttpBody, IHttpParam, IHttp
             const _ = new GotHttpResponse(response as Response<string>);
             return _
         } catch (error: any) {
-            console.error('Got Request Error:', error);
+            console.error('Got Request Error:', toSafeError(error));
             throw error;
         }
     }
